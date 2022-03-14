@@ -3,7 +3,6 @@
 
 # Build directories
 .gradle
-gradle
 build
 out
 
@@ -14,6 +13,7 @@ src/test
 lib
 
 # Build files
+gradle/wrapper/gradle-wrapper.jar
 gradlew
 gradlew.bat
 
