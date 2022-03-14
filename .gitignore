@@ -1,0 +1,22 @@
+# IDE directories
+.idea
+
+# Build directories
+.gradle
+gradle
+build
+out
+
+# Testing directories
+JFDFTransformer
+transform_out
+src/test
+lib
+
+# Build files
+gradlew
+gradlew.bat
+
+# IDE/Test extensions
+*.iml
+*.jar
