@@ -5,6 +5,7 @@ import net.jfdf.compiler.annotation.CompileWithExecute;
 import net.jfdf.compiler.annotation.MethodFallback;
 import net.jfdf.compiler.data.instruction.InstructionData;
 import net.jfdf.compiler.data.instruction.JumpInstructionData;
+import net.jfdf.compiler.data.instruction.TypeInstructionData;
 import net.jfdf.compiler.data.stack.*;
 import net.jfdf.compiler.util.FieldsManager;
 import net.jfdf.compiler.util.MethodWrapper;
@@ -966,10 +967,27 @@ public class CompilerMethodVisitor extends MethodVisitor {
                                 throw new UnsupportedOperationException("Trying to append value to array.");
                             }
 
+                            IStackValue stackValue = stack.remove(stack.size() - 1);
+
+
                             VariableControl.AppendValue(
                                     reference,
-                                    stack.get(stack.size() - 1).getTransformedValue()
+                                    stackValue.getTransformedValue()
                             );
+
+                            String valueDescriptor = stackValue.getDescriptor();
+                            if(valueDescriptor.startsWith("[") || (valueDescriptor.startsWith("L")
+                                    && !valueDescriptor.startsWith("Lnet/jfdf/jfdf/values/"))
+                                    && !valueDescriptor.equals("Ljava/lang/String;")) {
+                                Variable referenceCountList = new Variable("_jfdfRCL", Variable.Scope.NORMAL);
+                                INumber pointer = (INumber) stackValue.getTransformedValue();
+
+                                VariableControl.SetListValue(
+                                        referenceCountList,
+                                        pointer,
+                                        Number.Add(NumberMath.listValue(referenceCountList, pointer), new Number().Set(1))
+                                );
+                            }
 
                             stack.add(new NumberStackValue(1));
                         }
@@ -978,16 +996,34 @@ public class CompilerMethodVisitor extends MethodVisitor {
                                 throw new UnsupportedOperationException("Trying to insert value on array.");
                             }
 
+                            IStackValue stackValue = stack.remove(stack.size() - 1);
+
                             VariableControl.InsertListValue(
                                     reference,
                                     NumberMath.add((INumber) stack.remove(stack.size() - 2).getTransformedValue(), new Number().Set(1)),
-                                    stack.remove(stack.size() - 1).getTransformedValue()
+                                    stackValue.getTransformedValue()
                             );
+
+                            String valueDescriptor = stackValue.getDescriptor();
+                            if(valueDescriptor.startsWith("[") || (valueDescriptor.startsWith("L")
+                                    && !valueDescriptor.startsWith("Lnet/jfdf/jfdf/values/"))
+                                    && !valueDescriptor.equals("Ljava/lang/String;")) {
+                                Variable referenceCountList = new Variable("_jfdfRCL", Variable.Scope.NORMAL);
+                                INumber pointer = (INumber) stackValue.getTransformedValue();
+
+                                VariableControl.SetListValue(
+                                        referenceCountList,
+                                        pointer,
+                                        Number.Add(NumberMath.listValue(referenceCountList, pointer), new Number().Set(1))
+                                );
+                            }
                         }
                         case "remove(Ljava/lang/Object;)Z" -> {
                             if(pointerStackValue instanceof ArrayStackValue) {
                                 throw new UnsupportedOperationException("Trying to remove value from array.");
                             }
+
+                            System.out.println("[WARNING] Using List.remove(java.lang.Object) is not stable yet");
 
                             VariableControl.RemoveListValue(
                                     reference,
@@ -1003,7 +1039,31 @@ public class CompilerMethodVisitor extends MethodVisitor {
 
                             INumber index = NumberMath.add((INumber) stack.remove(stack.size() - 1).getTransformedValue(), new Number().Set(1));
 
-                            if(instructionDataList.get(instructionIndex + 1).instructionOpcode != Opcodes.POP) {
+                            InstructionData nextInsn = instructionDataList.get(instructionIndex + 1);
+                            if(nextInsn.instructionOpcode != Opcodes.POP) {
+                                String getValueDescriptor = "Ljava/lang/Object;";
+
+                                if(nextInsn.instructionOpcode == Opcodes.CHECKCAST) {
+                                    getValueDescriptor = ((TypeInstructionData) nextInsn).type;
+
+                                    if(!getValueDescriptor.startsWith("[")) {
+                                        getValueDescriptor = "L" + getValueDescriptor + ";";
+                                    }
+
+                                    getValueDescriptor = switch (getValueDescriptor) {
+                                        case "Ljava/lang/Boolean;" -> "Z";
+                                        case "Ljava/lang/Byte;"    -> "B";
+                                        case "Ljava/lang/Short;"   -> "S";
+                                        case "Ljava/lang/Integer;" -> "I";
+                                        case "Ljava/lang/Long;"    -> "J";
+
+                                        case "Ljava/lang/Float;"   -> "F";
+                                        case "Ljava/lang/Double;"  -> "D";
+
+                                        default -> getValueDescriptor;
+                                    };
+                                }
+
                                 String variableName = "_jco>" + method.getName() + ">" + (blockOperationIndex++);
 
                                 VariableControl.GetListValue(
@@ -1012,7 +1072,18 @@ public class CompilerMethodVisitor extends MethodVisitor {
                                         index
                                 );
 
-                                stack.add(new VariableStackValue("Ljava/lang/Object;", variableName));
+                                stack.add(new VariableStackValue(getValueDescriptor, variableName));
+                            } else {
+                                Variable referenceCountList = new Variable("_jfdfRCL", Variable.Scope.NORMAL);
+
+                                VariableControl.SetListValue(
+                                        referenceCountList,
+                                        NumberMath.listValue(reference, index),
+                                        Number.Subtract(Number.AsListValue(referenceCountList, NumberMath.listValue(reference, index)), new Number().Set(1))
+                                );
+
+                                // This would go away with POP
+                                stack.add(new NumberStackValue(0));
                             }
 
                             VariableControl.RemoveListIndex(
@@ -1034,6 +1105,8 @@ public class CompilerMethodVisitor extends MethodVisitor {
                             if(pointerStackValue instanceof ArrayStackValue) {
                                 throw new UnsupportedOperationException("Trying to append a collection to array.");
                             }
+
+                            System.out.println("[WARNING] Using List.addAll(java.lang.Collection) is not stable yet");
 
                             VariableControl.AppendList(
                                     reference,
@@ -1084,18 +1157,80 @@ public class CompilerMethodVisitor extends MethodVisitor {
                             INumber index = NumberMath.add((INumber) stack.remove(stack.size() - 1).getTransformedValue(), new Number().Set(1));
                             String variableName = "_jco>" + method.getName() + ">" + (blockOperationIndex++);
 
+                            Variable value = new Variable(variableName, Variable.Scope.LOCAL);
                             VariableControl.GetListValue(
-                                    new Variable(variableName, Variable.Scope.LOCAL),
+                                    value,
                                     reference,
                                     index
                             );
+
+                            InstructionData nextInsn = instructionDataList.get(instructionIndex + 1);
+                            String getValueDescriptor = "Ljava/lang/Object;";
+
+                            if(nextInsn.instructionOpcode == Opcodes.CHECKCAST) {
+                                getValueDescriptor = ((TypeInstructionData) nextInsn).type;
+
+                                if(!getValueDescriptor.startsWith("[")) {
+                                    getValueDescriptor = "L" + getValueDescriptor + ";";
+                                }
+
+                                getValueDescriptor = switch (getValueDescriptor) {
+                                    case "Ljava/lang/Boolean;" -> "Z";
+                                    case "Ljava/lang/Byte;"    -> "B";
+                                    case "Ljava/lang/Short;"   -> "S";
+                                    case "Ljava/lang/Integer;" -> "I";
+                                    case "Ljava/lang/Long;"    -> "J";
+
+                                    case "Ljava/lang/Float;"   -> "F";
+                                    case "Ljava/lang/Double;"  -> "D";
+
+                                    default -> getValueDescriptor;
+                                };
+                            }
+
+                            if(getValueDescriptor.startsWith("[") || (getValueDescriptor.startsWith("L")
+                                    && !getValueDescriptor.equals("Ljava/lang/String;")
+                                    && !getValueDescriptor.startsWith("Lnet/jfdf/jfdf/values/"))) {
+                                Variable referenceCountList = new Variable("_jfdfRCL", Variable.Scope.NORMAL);
+
+                                VariableControl.SetListValue(
+                                        referenceCountList,
+                                        value,
+                                        Number.Subtract(Number.AsListValue(referenceCountList, Number.AsVariable(value)), new Number().Set(1))
+                                );
+                            }
 
                             stack.add(new VariableStackValue("Ljava/lang/Object;", variableName));
                         }
                         case "set(ILjava/lang/Object;)Ljava/lang/Object;" -> {
                             INumber index = NumberMath.add((INumber) stack.remove(stack.size() - 1).getTransformedValue(), new Number().Set(1));
+                            IStackValue value = stack.remove(stack.size() - 1);
 
-                            if(instructionDataList.get(instructionIndex + 1).instructionOpcode != Opcodes.POP) {
+                            InstructionData nextInsn = instructionDataList.get(instructionIndex + 1);
+                            if(nextInsn.instructionOpcode != Opcodes.POP) {
+                                String getValueDescriptor = "Ljava/lang/Object;";
+
+                                if(nextInsn.instructionOpcode == Opcodes.CHECKCAST) {
+                                    getValueDescriptor = ((TypeInstructionData) nextInsn).type;
+
+                                    if(!getValueDescriptor.startsWith("[")) {
+                                        getValueDescriptor = "L" + getValueDescriptor + ";";
+                                    }
+
+                                    getValueDescriptor = switch (getValueDescriptor) {
+                                        case "Ljava/lang/Boolean;" -> "Z";
+                                        case "Ljava/lang/Byte;"    -> "B";
+                                        case "Ljava/lang/Short;"   -> "S";
+                                        case "Ljava/lang/Integer;" -> "I";
+                                        case "Ljava/lang/Long;"    -> "J";
+
+                                        case "Ljava/lang/Float;"   -> "F";
+                                        case "Ljava/lang/Double;"  -> "D";
+
+                                        default -> getValueDescriptor;
+                                    };
+                                }
+
                                 String variableName = "_jco>" + method.getName() + ">" + (blockOperationIndex++);
 
                                 VariableControl.GetListValue(
@@ -1104,14 +1239,39 @@ public class CompilerMethodVisitor extends MethodVisitor {
                                         index
                                 );
 
-                                stack.add(new VariableStackValue("Ljava/lang/Object;", variableName));
+                                stack.add(new VariableStackValue(getValueDescriptor, variableName));
+                            } else {
+                                Variable referenceCountList = new Variable("_jfdfRCL", Variable.Scope.NORMAL);
+
+                                VariableControl.SetListValue(
+                                        referenceCountList,
+                                        NumberMath.listValue(reference, index),
+                                        Number.Subtract(Number.AsListValue(referenceCountList, NumberMath.listValue(reference, index)), new Number().Set(1))
+                                );
+
+                                // This would go away with POP
+                                stack.add(new NumberStackValue(0));
                             }
 
                             VariableControl.SetListValue(
                                     reference,
                                     index,
-                                    stack.remove(stack.size() - 1).getTransformedValue()
+                                    value.getTransformedValue()
                             );
+
+                            String valueDescriptor = value.getDescriptor();
+                            if(valueDescriptor.startsWith("[") || (valueDescriptor.startsWith("L")
+                                    && !valueDescriptor.startsWith("Lnet/jfdf/jfdf/values/"))
+                                    && !valueDescriptor.equals("Ljava/lang/String;")) {
+                                Variable referenceCountList = new Variable("_jfdfRCL", Variable.Scope.NORMAL);
+                                INumber pointer = (INumber) value.getTransformedValue();
+
+                                VariableControl.SetListValue(
+                                        referenceCountList,
+                                        pointer,
+                                        Number.Add(NumberMath.listValue(referenceCountList, pointer), new Number().Set(1))
+                                );
+                            }
                         }
                     }
 
