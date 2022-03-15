@@ -311,6 +311,18 @@ public class CompilerMethodVisitor extends MethodVisitor {
                         NumberMath.add((INumber) stack.remove(stack.size() - 1).getTransformedValue(), new Number().Set(1))
                 );
 
+                if(elementDescriptor.startsWith("[") || (elementDescriptor.startsWith("L")
+                        && !elementDescriptor.startsWith("Lnet/jfdf/jfdf/values/"))
+                        && !elementDescriptor.equals("Ljava/lang/String;")) {
+                    Variable referenceCountList = new Variable("_jfdfRCL", Variable.Scope.NORMAL);
+
+                    VariableControl.SetListValue(
+                            referenceCountList,
+                            value,
+                            Number.Add(NumberMath.listValue(referenceCountList, value), new Number().Set(1))
+                    );
+                }
+
                 stack.add(new VariableStackValue(elementDescriptor, value.getName()));
             }
             case Opcodes.IASTORE,
@@ -322,19 +334,47 @@ public class CompilerMethodVisitor extends MethodVisitor {
                     Opcodes.SASTORE,
                     Opcodes.AASTORE -> {
                 IStackValue array = stack.remove(stack.size() - 3);
+                IStackValue index = stack.remove(stack.size() - 2);
+                IStackValue value = stack.remove(stack.size() - 1);
+
+                String valueDescriptor = value.getDescriptor();
+                var updateRefCount = opcode == Opcodes.AASTORE
+                        && (valueDescriptor.startsWith("[") || (valueDescriptor.startsWith("L")
+                        && !valueDescriptor.startsWith("Lnet/jfdf/jfdf/values/"))
+                        && !valueDescriptor.equals("Ljava/lang/String;"));
+
+                if(updateRefCount) {
+                    Variable referenceCountList = new Variable("_jfdfRCL", Variable.Scope.NORMAL);
+
+                    VariableControl.SetListValue(
+                            referenceCountList,
+                            (INumber) value.getTransformedValue(),
+                            Number.Add(NumberMath.listValue(referenceCountList, (INumber) value.getTransformedValue()), new Number().Set(1))
+                    );
+                }
 
                 if(array instanceof ArrayStackValue) {
                     ((ArrayStackValue) array).set(
-                            stack.remove(stack.size() - 2),
-                            stack.remove(stack.size() - 1).getTransformedValue()
+                            index,
+                            value.getTransformedValue()
                     );
                 } else {
                     Variable reference = new Variable("_jfdfR%var(" + ((Variable) array.getTransformedValue()).getName() + ")", Variable.Scope.NORMAL);
 
                     VariableControl.SetListValue(
                             reference,
-                            NumberMath.add((INumber) stack.remove(stack.size() - 2).getTransformedValue(), new Number().Set(1)),
-                            stack.remove(stack.size() - 1).getTransformedValue()
+                            NumberMath.add((INumber) index.getTransformedValue(), new Number().Set(1)),
+                            value.getTransformedValue()
+                    );
+                }
+
+                if(updateRefCount) {
+                    Variable referenceCountList = new Variable("_jfdfRCL", Variable.Scope.NORMAL);
+
+                    VariableControl.SetListValue(
+                            referenceCountList,
+                            (INumber) value.getTransformedValue(),
+                            Number.Add(NumberMath.listValue(referenceCountList, (INumber) value.getTransformedValue()), new Number().Set(1))
                     );
                 }
             }
@@ -616,13 +656,6 @@ public class CompilerMethodVisitor extends MethodVisitor {
                 stack.add(new VariableStackValue("I", value.getName()));
             }
             default -> throw new IllegalStateException("Unsupported opcode: " + opcode);
-        }
-
-        switch (opcode) {
-            case Opcodes.AALOAD:
-                System.out.println("smth");
-            case Opcodes.AASTORE:
-                break;
         }
 
         super.visitInsn(opcode);
