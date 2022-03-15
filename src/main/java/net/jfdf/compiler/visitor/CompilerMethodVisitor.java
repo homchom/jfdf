@@ -1494,7 +1494,16 @@ public class CompilerMethodVisitor extends MethodVisitor {
                     } else {
                         return;
                     }
-                } else if(name.equals("valueOf") && owner.matches("java/lang/(Boolean|Byte|Short|Integer|Long|Character)")) {
+                } else if((name.equals("valueOf") || name.endsWith("Value")) && owner.matches("java/lang/(Boolean|Byte|Short|Integer|Long|Character)")) {
+                    if(name.equals("valueOf")) {
+                        Variable value = new Variable("_jco>" + method.getName() + ">" + (blockOperationIndex++), Variable.Scope.LOCAL);
+                        VariableControl.CreateList(value, stack.remove(stack.size() - 1).getTransformedValue());
+
+                        stack.add(new VariableStackValue("J", value.getName()));
+                    } else {
+                        stack.add(new MathFunctionStackValue((Variable) stack.remove(stack.size() - 1), new Number().Set(1), MathFunctionStackValue.MathFunction.LIST_VALUE));
+                    }
+
                     return;
                 } else if(owner.equals("java/util/Arrays")) {
                     if(name.equals("toString")) {
