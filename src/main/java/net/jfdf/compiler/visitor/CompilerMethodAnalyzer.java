@@ -3,6 +3,7 @@ package net.jfdf.compiler.visitor;
 import net.jfdf.compiler.data.instruction.InstructionData;
 import net.jfdf.compiler.data.instruction.InstructionType;
 import net.jfdf.compiler.data.instruction.JumpInstructionData;
+import net.jfdf.compiler.data.instruction.TypeInstructionData;
 import org.objectweb.asm.*;
 
 import java.util.ArrayList;
@@ -171,7 +172,9 @@ public class CompilerMethodAnalyzer extends MethodVisitor {
     public void visitTypeInsn(int opcode, String type) {
         ++instructionIndex;
 
-        InstructionData instructionData = new InstructionData();
+        TypeInstructionData instructionData = new TypeInstructionData();
+        instructionData.type = type;
+
         instructionData.instructionOpcode = opcode;
         instructionData.instructionType = InstructionType.TYPE;
 
