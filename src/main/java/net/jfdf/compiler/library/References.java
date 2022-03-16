@@ -1,10 +1,12 @@
 package net.jfdf.compiler.library;
 
 import net.jfdf.compiler.annotation.CompileWithExecute;
+import net.jfdf.compiler.annotation.NoCompile;
 import net.jfdf.compiler.annotation.NoConstructors;
 import net.jfdf.jfdf.mangement.*;
 import net.jfdf.jfdf.values.*;
 import net.jfdf.jfdf.values.Number;
+import net.jfdf.transformer.util.NumberMath;
 
 @NoConstructors
 public class References {
@@ -221,5 +223,25 @@ public class References {
         VariableControl.Increment(new Variable("_jfdfFD", Variable.Scope.LOCAL));
         Functions.Call("_jfdf>std>gc");
         Control.End();
+    }
+
+    private final static Variable referenceCountList = new Variable("_jfdfRCL", Variable.Scope.NORMAL);
+
+    @NoCompile
+    public static void incrementRefCount(INumber pointer) {
+        VariableControl.SetListValue(
+                referenceCountList,
+                pointer,
+                Number.Add(NumberMath.listValue(referenceCountList, pointer), new Number().Set(1))
+        );
+    }
+
+    @NoCompile
+    public static void decrementRefCount(INumber pointer) {
+        VariableControl.SetListValue(
+                referenceCountList,
+                pointer,
+                Number.Subtract(NumberMath.listValue(referenceCountList, pointer), new Number().Set(1))
+        );
     }
 }

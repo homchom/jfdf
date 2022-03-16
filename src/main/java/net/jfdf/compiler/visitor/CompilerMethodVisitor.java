@@ -7,12 +7,12 @@ import net.jfdf.compiler.data.instruction.InstructionData;
 import net.jfdf.compiler.data.instruction.JumpInstructionData;
 import net.jfdf.compiler.data.instruction.TypeInstructionData;
 import net.jfdf.compiler.data.stack.*;
+import net.jfdf.compiler.library.References;
 import net.jfdf.compiler.util.FieldsManager;
 import net.jfdf.compiler.util.MethodWrapper;
 import net.jfdf.compiler.util.MethodsManager;
-import net.jfdf.jfdf.blocks.FunctionBlock;
-import net.jfdf.jfdf.blocks.PlayerEventBlock;
-import net.jfdf.jfdf.blocks.ProcessBlock;
+import net.jfdf.compiler.util.ReferenceUtils;
+import net.jfdf.jfdf.blocks.*;
 import net.jfdf.jfdf.mangement.*;
 import net.jfdf.jfdf.mangement.Process;
 import net.jfdf.jfdf.values.*;
@@ -292,7 +292,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                 IStackValue array = stack.remove(stack.size() - 2);
                 String elementDescriptor;
 
-                Variable value = new Variable("_jco>" + method.getName() + ">" + (blockOperationIndex++), Variable.Scope.LOCAL);
+                Variable value = getTempVariable();
                 Variable reference;
 
                 if(array instanceof ArrayStackValue) {
@@ -311,18 +311,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                         NumberMath.add((INumber) stack.remove(stack.size() - 1).getTransformedValue(), new Number().Set(1))
                 );
 
-                if(elementDescriptor.startsWith("[") || (elementDescriptor.startsWith("L")
-                        && !elementDescriptor.startsWith("Lnet/jfdf/jfdf/values/"))
-                        && !elementDescriptor.equals("Ljava/lang/String;")) {
-                    Variable referenceCountList = new Variable("_jfdfRCL", Variable.Scope.NORMAL);
-
-                    VariableControl.SetListValue(
-                            referenceCountList,
-                            value,
-                            Number.Add(NumberMath.listValue(referenceCountList, value), new Number().Set(1))
-                    );
-                }
-
+                ReferenceUtils.incrementIfReference(elementDescriptor, value);
                 stack.add(new VariableStackValue(elementDescriptor, value.getName()));
             }
             case Opcodes.IASTORE,
@@ -338,45 +327,44 @@ public class CompilerMethodVisitor extends MethodVisitor {
                 IStackValue value = stack.remove(stack.size() - 1);
 
                 String valueDescriptor = value.getDescriptor();
-                var updateRefCount = opcode == Opcodes.AASTORE
-                        && (valueDescriptor.startsWith("[") || (valueDescriptor.startsWith("L")
-                        && !valueDescriptor.startsWith("Lnet/jfdf/jfdf/values/"))
-                        && !valueDescriptor.equals("Ljava/lang/String;"));
-
-                if(updateRefCount) {
-                    Variable referenceCountList = new Variable("_jfdfRCL", Variable.Scope.NORMAL);
-
-                    VariableControl.SetListValue(
-                            referenceCountList,
-                            (INumber) value.getTransformedValue(),
-                            Number.Add(NumberMath.listValue(referenceCountList, (INumber) value.getTransformedValue()), new Number().Set(1))
-                    );
-                }
 
                 if(array instanceof ArrayStackValue) {
-                    ((ArrayStackValue) array).set(
+                    ArrayStackValue arrayStackValue = (ArrayStackValue) array;
+
+                    if(opcode == Opcodes.AASTORE) {
+                        References.decrementRefCount(
+                                NumberMath.listValue(
+                                        arrayStackValue.getReference(),
+                                        (INumber) index.getTransformedValue()
+                                )
+                        );
+                    }
+
+                    arrayStackValue.set(
                             index,
                             value.getTransformedValue()
                     );
                 } else {
                     Variable reference = new Variable("_jfdfR%var(" + ((Variable) array.getTransformedValue()).getName() + ")", Variable.Scope.NORMAL);
+                    INumber newIndex = NumberMath.add((INumber) index.getTransformedValue(), new Number().Set(1));
+
+                    if(opcode == Opcodes.AASTORE) {
+                        References.decrementRefCount(
+                                NumberMath.listValue(
+                                        reference,
+                                        newIndex
+                                )
+                        );
+                    }
 
                     VariableControl.SetListValue(
                             reference,
-                            NumberMath.add((INumber) index.getTransformedValue(), new Number().Set(1)),
+                            newIndex,
                             value.getTransformedValue()
                     );
                 }
 
-                if(updateRefCount) {
-                    Variable referenceCountList = new Variable("_jfdfRCL", Variable.Scope.NORMAL);
-
-                    VariableControl.SetListValue(
-                            referenceCountList,
-                            (INumber) value.getTransformedValue(),
-                            Number.Add(NumberMath.listValue(referenceCountList, (INumber) value.getTransformedValue()), new Number().Set(1))
-                    );
-                }
+                ReferenceUtils.incrementIfReference(valueDescriptor, (INumber) value.getTransformedValue());
             }
             case Opcodes.POP ->
                 stack.remove(stack.size() - 1);
@@ -456,7 +444,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                     Opcodes.LOR,
                     Opcodes.IXOR,
                     Opcodes.LXOR -> {
-                Variable value = new Variable("_jco>" + method.getName() + ">" + (blockOperationIndex++), Variable.Scope.LOCAL);
+                Variable value = getTempVariable();
 
                 Tags.Operator operatorType = switch (opcode) {
                     case Opcodes.ISHL,
@@ -587,18 +575,8 @@ public class CompilerMethodVisitor extends MethodVisitor {
                     String descriptor = descriptorEntry.getValue();
 
                     if(var >= firstLocalVar) {
-                        if(descriptor.startsWith("[") || (descriptor.startsWith("L")
-                                && !descriptor.startsWith("Lnet/jfdf/jfdf/values/"))
-                                && !descriptor.equals("Ljava/lang/String;")) {
-                            Variable referenceCountList = new Variable("_jfdfRCL", Variable.Scope.NORMAL);
-                            Variable valuePointer = new Variable("_jfdffv>%var(_jfdfFD)>" + var, Variable.Scope.LOCAL);
-
-                            VariableControl.SetListValue(
-                                    referenceCountList,
-                                    valuePointer,
-                                    Number.Subtract(Number.AsListValue(referenceCountList, Number.AsVariable(valuePointer)), new Number().Set(1))
-                            );
-                        }
+                        Variable valuePointer = new Variable("_jfdffv>%var(_jfdfFD)>" + var, Variable.Scope.LOCAL);
+                        ReferenceUtils.decrementIfReference(descriptor, valuePointer);
                     }
                 }
 
@@ -617,18 +595,8 @@ public class CompilerMethodVisitor extends MethodVisitor {
                         String descriptor = descriptorEntry.getValue();
 
                         if(var >= firstLocalVar) {
-                            if(descriptor.startsWith("[") || (descriptor.startsWith("L")
-                                    && !descriptor.startsWith("Lnet/jfdf/jfdf/values/"))
-                                    && !descriptor.equals("Ljava/lang/String;")) {
-                                Variable referenceCountList = new Variable("_jfdfRCL", Variable.Scope.NORMAL);
-                                Variable valuePointer = new Variable("_jfdffv>%var(_jfdfFD)>" + var, Variable.Scope.LOCAL);
-
-                                VariableControl.SetListValue(
-                                        referenceCountList,
-                                        valuePointer,
-                                        Number.Subtract(Number.AsListValue(referenceCountList, Number.AsVariable(valuePointer)), new Number().Set(1))
-                                );
-                            }
+                            Variable valuePointer = new Variable("_jfdffv>%var(_jfdfFD)>" + var, Variable.Scope.LOCAL);
+                            ReferenceUtils.decrementIfReference(descriptor, valuePointer);
                         }
                     }
 
@@ -639,7 +607,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
             case Opcodes.ARRAYLENGTH -> {
                 IStackValue array = stack.remove(stack.size() - 1);
 
-                Variable value = new Variable("_jco>" + method.getName() + ">" + (blockOperationIndex++), Variable.Scope.LOCAL);
+                Variable value = getTempVariable();
                 Variable reference;
 
                 if(array instanceof ReferencedStackValue) {
@@ -677,19 +645,10 @@ public class CompilerMethodVisitor extends MethodVisitor {
                 variableName = "_jfdffv>%var(_jfdfFD)>" + var;
             }
 
-            Variable referenceCountList = new Variable("_jfdfRCL", Variable.Scope.NORMAL);
             Variable valuePointer = new Variable(variableName, Variable.Scope.NORMAL);
 
             String variableDescriptor = variableDescriptors.get(var);
-            if(variableDescriptor != null
-                    && !variableDescriptor.equals("Ljava/lang/String;")
-                    && !variableDescriptor.startsWith("Lnet/jfdf/jfdf/values/")) {
-                VariableControl.SetListValue(
-                        referenceCountList,
-                        valuePointer,
-                        Number.Subtract(Number.AsListValue(referenceCountList, Number.AsVariable(valuePointer)), new Number().Set(1))
-                );
-            }
+            ReferenceUtils.decrementIfReference(variableDescriptor, valuePointer);
 
             // Checks if value is a new reference object
             if(stackValue instanceof ReferencedStackValue) {
@@ -701,15 +660,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                 VariableControl.Set(new Variable(variableName, Variable.Scope.LOCAL), stackValue.getTransformedValue());
                 variableDescriptors.put(var, stackValue.getDescriptor());
 
-                if(opcode == Opcodes.ASTORE
-                        && !stackValue.getDescriptor().equals("Ljava/lang/String;")
-                        && !stackValue.getDescriptor().startsWith("Lnet/jfdf/jfdf/values/")) {
-                    VariableControl.SetListValue(
-                            referenceCountList,
-                            valuePointer,
-                            Number.Add(Number.AsListValue(referenceCountList, Number.AsVariable(valuePointer)), new Number().Set(1))
-                    );
-                }
+                ReferenceUtils.incrementIfReference(stackValue.getDescriptor(), valuePointer);
             }
         } else if(opcode >= Opcodes.ILOAD && opcode <= Opcodes.ALOAD) {
             if((Type.getArgumentTypes(method.getDescriptor()).length + (method.isMember() ? 1 : 0)) > var) {
@@ -817,7 +768,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                 } else if(name.equals("clone")
                         && descriptor.equals("()Ljava/lang/Object;")
                         && owner.startsWith("[")) {
-                    String variableName = "_jco>" + method.getName() + ">" + (blockOperationIndex++);
+                    String variableName = getTempVariableName();
                     Variable reference;
 
                     if(pointerStackValue instanceof ReferencedStackValue) {
@@ -836,6 +787,10 @@ public class CompilerMethodVisitor extends MethodVisitor {
                     return;
                 } else if(owner.startsWith("net/jfdf/jfdf/mangement/")) {
                     Object[] methodArgs = new Object[argsCount];
+
+                    if(!(pointerStackValue instanceof SpecialStackValue)) {
+                        throw new IllegalStateException("Given stack value should be a special stack value.");
+                    }
 
                     SpecialStackValue specialStackValue = (SpecialStackValue) pointerStackValue;
                     Class<?> class_;
@@ -1009,18 +964,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                             );
 
                             String valueDescriptor = stackValue.getDescriptor();
-                            if(valueDescriptor.startsWith("[") || (valueDescriptor.startsWith("L")
-                                    && !valueDescriptor.startsWith("Lnet/jfdf/jfdf/values/"))
-                                    && !valueDescriptor.equals("Ljava/lang/String;")) {
-                                Variable referenceCountList = new Variable("_jfdfRCL", Variable.Scope.NORMAL);
-                                INumber pointer = (INumber) stackValue.getTransformedValue();
-
-                                VariableControl.SetListValue(
-                                        referenceCountList,
-                                        pointer,
-                                        Number.Add(NumberMath.listValue(referenceCountList, pointer), new Number().Set(1))
-                                );
-                            }
+                            ReferenceUtils.incrementIfReference(valueDescriptor, (INumber) stackValue.getTransformedValue());
 
                             stack.add(new NumberStackValue(1));
                         }
@@ -1038,18 +982,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                             );
 
                             String valueDescriptor = stackValue.getDescriptor();
-                            if(valueDescriptor.startsWith("[") || (valueDescriptor.startsWith("L")
-                                    && !valueDescriptor.startsWith("Lnet/jfdf/jfdf/values/"))
-                                    && !valueDescriptor.equals("Ljava/lang/String;")) {
-                                Variable referenceCountList = new Variable("_jfdfRCL", Variable.Scope.NORMAL);
-                                INumber pointer = (INumber) stackValue.getTransformedValue();
-
-                                VariableControl.SetListValue(
-                                        referenceCountList,
-                                        pointer,
-                                        Number.Add(NumberMath.listValue(referenceCountList, pointer), new Number().Set(1))
-                                );
-                            }
+                            ReferenceUtils.incrementIfReference(valueDescriptor, (INumber) stackValue.getTransformedValue());
                         }
                         case "remove(Ljava/lang/Object;)Z" -> {
                             if(pointerStackValue instanceof ArrayStackValue) {
@@ -1097,7 +1030,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                                     };
                                 }
 
-                                String variableName = "_jco>" + method.getName() + ">" + (blockOperationIndex++);
+                                String variableName = getTempVariableName();
 
                                 VariableControl.GetListValue(
                                         new Variable(variableName, Variable.Scope.LOCAL),
@@ -1107,13 +1040,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
 
                                 stack.add(new VariableStackValue(getValueDescriptor, variableName));
                             } else {
-                                Variable referenceCountList = new Variable("_jfdfRCL", Variable.Scope.NORMAL);
-
-                                VariableControl.SetListValue(
-                                        referenceCountList,
-                                        NumberMath.listValue(reference, index),
-                                        Number.Subtract(Number.AsListValue(referenceCountList, NumberMath.listValue(reference, index)), new Number().Set(1))
-                                );
+                                References.decrementRefCount(NumberMath.listValue(reference, index));
 
                                 // This would go away with POP
                                 stack.add(new NumberStackValue(0));
@@ -1125,7 +1052,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                             );
                         }
                         case "size()I" -> {
-                            String variableName = "_jco>" + method.getName() + ">" + (blockOperationIndex++);
+                            String variableName = getTempVariableName();
 
                             VariableControl.ListLength(
                                     new Variable(variableName, Variable.Scope.LOCAL),
@@ -1155,7 +1082,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
 
                             throw new IllegalStateException("Inserting a collection at index is not supported.");
                         }
-                        case "toArray()[Ljava/lang/Object;" -> {
+                        case "toArray()[Ljava/lang/Object;" ->
                             stack.add(
                                     new ArrayStackValue(
                                             (Variable) pointerStackValue.getTransformedValue(),
@@ -1163,7 +1090,6 @@ public class CompilerMethodVisitor extends MethodVisitor {
                                             blockOperationIndex++
                                     )
                             );
-                        }
                         case "clear()V" -> {
                             if(pointerStackValue instanceof ArrayStackValue) {
                                 throw new UnsupportedOperationException("Trying to clear an array.");
@@ -1175,7 +1101,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                         }
                         case "indexOf(Ljava/lang/Object;)I" -> {
                             CodeValue value = stack.remove(stack.size() - 1).getTransformedValue();
-                            String variableName = "_jco>" + method.getName() + ">" + (blockOperationIndex++);
+                            String variableName = getTempVariableName();
 
                             VariableControl.GetValueIndex(
                                     new Variable(variableName, Variable.Scope.LOCAL),
@@ -1188,7 +1114,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                         }
                         case "get(I)Ljava/lang/Object;" -> {
                             INumber index = NumberMath.add((INumber) stack.remove(stack.size() - 1).getTransformedValue(), new Number().Set(1));
-                            String variableName = "_jco>" + method.getName() + ">" + (blockOperationIndex++);
+                            String variableName = getTempVariableName();
 
                             Variable value = new Variable(variableName, Variable.Scope.LOCAL);
                             VariableControl.GetListValue(
@@ -1221,18 +1147,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                                 };
                             }
 
-                            if(getValueDescriptor.startsWith("[") || (getValueDescriptor.startsWith("L")
-                                    && !getValueDescriptor.equals("Ljava/lang/String;")
-                                    && !getValueDescriptor.startsWith("Lnet/jfdf/jfdf/values/"))) {
-                                Variable referenceCountList = new Variable("_jfdfRCL", Variable.Scope.NORMAL);
-
-                                VariableControl.SetListValue(
-                                        referenceCountList,
-                                        value,
-                                        Number.Subtract(Number.AsListValue(referenceCountList, Number.AsVariable(value)), new Number().Set(1))
-                                );
-                            }
-
+                            ReferenceUtils.decrementIfReference(getValueDescriptor, value);
                             stack.add(new VariableStackValue("Ljava/lang/Object;", variableName));
                         }
                         case "set(ILjava/lang/Object;)Ljava/lang/Object;" -> {
@@ -1264,7 +1179,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                                     };
                                 }
 
-                                String variableName = "_jco>" + method.getName() + ">" + (blockOperationIndex++);
+                                String variableName = getTempVariableName();
 
                                 VariableControl.GetListValue(
                                         new Variable(variableName, Variable.Scope.LOCAL),
@@ -1274,13 +1189,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
 
                                 stack.add(new VariableStackValue(getValueDescriptor, variableName));
                             } else {
-                                Variable referenceCountList = new Variable("_jfdfRCL", Variable.Scope.NORMAL);
-
-                                VariableControl.SetListValue(
-                                        referenceCountList,
-                                        NumberMath.listValue(reference, index),
-                                        Number.Subtract(Number.AsListValue(referenceCountList, NumberMath.listValue(reference, index)), new Number().Set(1))
-                                );
+                                References.decrementRefCount(NumberMath.listValue(reference, index));
 
                                 // This would go away with POP
                                 stack.add(new NumberStackValue(0));
@@ -1292,19 +1201,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                                     value.getTransformedValue()
                             );
 
-                            String valueDescriptor = value.getDescriptor();
-                            if(valueDescriptor.startsWith("[") || (valueDescriptor.startsWith("L")
-                                    && !valueDescriptor.startsWith("Lnet/jfdf/jfdf/values/"))
-                                    && !valueDescriptor.equals("Ljava/lang/String;")) {
-                                Variable referenceCountList = new Variable("_jfdfRCL", Variable.Scope.NORMAL);
-                                INumber pointer = (INumber) value.getTransformedValue();
-
-                                VariableControl.SetListValue(
-                                        referenceCountList,
-                                        pointer,
-                                        Number.Add(NumberMath.listValue(referenceCountList, pointer), new Number().Set(1))
-                                );
-                            }
+                            ReferenceUtils.incrementIfReference(value.getDescriptor(), (INumber) value.getTransformedValue());
                         }
                     }
 
@@ -1689,7 +1586,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                     }
                 } else if((name.equals("valueOf") || name.endsWith("Value")) && owner.matches("java/lang/(Boolean|Byte|Short|Integer|Long|Character)")) {
                     if(name.equals("valueOf")) {
-                        Variable value = new Variable("_jco>" + method.getName() + ">" + (blockOperationIndex++), Variable.Scope.LOCAL);
+                        Variable value = getTempVariable();
                         VariableControl.CreateList(value, stack.remove(stack.size() - 1).getTransformedValue());
 
                         stack.add(new VariableStackValue("J", value.getName()));
@@ -1810,7 +1707,6 @@ public class CompilerMethodVisitor extends MethodVisitor {
 
                         // Pushes stdout stream to stack as special value
                         stack.add(new SpecialStackValue(SpecialStackValue.SpecialValueType.SYSTEM_OUT));
-                        return;
                     } else if(name.equals("err")) {
 
                         // Pushes stderr stream to stack as special value
@@ -1847,8 +1743,6 @@ public class CompilerMethodVisitor extends MethodVisitor {
                         throw new RuntimeException("Something went wrong.", e);
                     }
                 }
-
-                return;
             }
             case Opcodes.GETFIELD -> {
                 try {
@@ -1879,7 +1773,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                                 )
                         );
                     } else {
-                        Variable value = new Variable("_jco>" + method.getName() + ">" + (blockOperationIndex++), Variable.Scope.LOCAL);
+                        Variable value = getTempVariable();
 
                         VariableControl.GetListValue(
                                 value,
@@ -1906,37 +1800,20 @@ public class CompilerMethodVisitor extends MethodVisitor {
                         // Changes reference's variable to this variable
                         ((ReferencedStackValue) value).setAllocationVariable("_jfdf>" + owner + ">" + name, Variable.Scope.NORMAL);
                     } else {
-                        boolean changeReferenceCount = (descriptor.startsWith("L") || descriptor.startsWith("["))
-                                && !descriptor.startsWith("Lnet/jfdf/jfdf/values/")
-                                && !descriptor.equals("Ljava/lang/String;");
+                        Variable valuePointer = new Variable(
+                                "_jfdf>" + owner + ">" + name,
+                                field.getAnnotation(Saved.class) == null
+                                        ? Variable.Scope.NORMAL : Variable.Scope.SAVED
+                        );
 
-                        Variable referenceCountList = new Variable("_jfdfRCL", Variable.Scope.NORMAL);
-                        Variable valuePointer = new Variable("_jfdf>" + owner + ">" + name, Variable.Scope.NORMAL);
-
-                        if(changeReferenceCount) {
-                            VariableControl.SetListValue(
-                                    referenceCountList,
-                                    valuePointer,
-                                    Number.Subtract(Number.AsListValue(referenceCountList, Number.AsVariable(valuePointer)), new Number().Set(1))
-                            );
-                        }
+                        ReferenceUtils.decrementIfReference(descriptor, valuePointer);
 
                         // Sets this variable to a value
                         VariableControl.Set(
-                                new Variable(
-                                        "_jfdf>" + owner + ">" + name,
-                                        field.getAnnotation(Saved.class) == null
-                                                ? Variable.Scope.NORMAL : Variable.Scope.SAVED
-                                ), value.getTransformedValue()
+                                valuePointer, value.getTransformedValue()
                         );
 
-                        if(changeReferenceCount) {
-                            VariableControl.SetListValue(
-                                    referenceCountList,
-                                    valuePointer,
-                                    Number.Add(Number.AsListValue(referenceCountList, Number.AsVariable(valuePointer)), new Number().Set(1))
-                            );
-                        }
+                        ReferenceUtils.incrementIfReference(descriptor, valuePointer);
                     }
                 } catch (ClassNotFoundException | NoSuchFieldException e) {
                     throw new RuntimeException("Something went wrong.", e);
@@ -1957,18 +1834,9 @@ public class CompilerMethodVisitor extends MethodVisitor {
                     int fieldIndex = FieldsManager.getFieldIndex(fieldClass, name);
 
                     IStackValue newValue = stack.remove(stack.size() - 1);
-                    boolean changeReferenceCount = (descriptor.startsWith("L") || descriptor.startsWith("["));
 
-                    Variable referenceCountList = new Variable("_jfdfRCL", Variable.Scope.NORMAL);
                     Number valuePointer = Number.AsListValue(reference, new Number().Set(fieldIndex));
-
-                    if(changeReferenceCount) {
-                        VariableControl.SetListValue(
-                                referenceCountList,
-                                valuePointer,
-                                Number.Subtract(Number.AsListValue(referenceCountList, valuePointer), new Number().Set(1))
-                        );
-                    }
+                    ReferenceUtils.decrementIfReference(descriptor, valuePointer);
 
                     // Sets this variable to a value
                     VariableControl.SetListValue(
@@ -1977,13 +1845,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                             newValue.getTransformedValue()
                     );
 
-                    if(changeReferenceCount) {
-                        VariableControl.SetListValue(
-                                referenceCountList,
-                                valuePointer,
-                                Number.Add(Number.AsListValue(referenceCountList, valuePointer), new Number().Set(1))
-                        );
-                    }
+                    ReferenceUtils.incrementIfReference(descriptor, valuePointer);
                 } catch (ClassNotFoundException e) {
                     throw new RuntimeException("Something went wrong.", e);
                 }
@@ -2073,7 +1935,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
 
                 if(variable.getName().equals(variableName)) {
                     if(newVariableValue == null) {
-                        String newVariableName = "_jco>" + method.getName() + ">" + (blockOperationIndex++);
+                        String newVariableName = getTempVariableName();
                         newVariableValue = new VariableStackValue("J", newVariableName);
 
                         VariableControl.Set(
@@ -2155,314 +2017,93 @@ public class CompilerMethodVisitor extends MethodVisitor {
 
         switch (opcode) {
             case Opcodes.IF_ICMPEQ,
-                    Opcodes.IF_ACMPEQ -> {
-                if (!whileRepeat) {
-                    If.Variable.NotEquals(
-                            stack.remove(stack.size() - 2).getTransformedValue(),
-                            new CodeValue[]{stack.remove(stack.size() - 1).getTransformedValue()},
-                            false
+                    Opcodes.IF_ACMPEQ,
+                    Opcodes.IF_ICMPNE,
+                    Opcodes.IF_ACMPNE,
+                    Opcodes.IF_ICMPGT,
+                    Opcodes.IF_ICMPLT,
+                    Opcodes.IF_ICMPGE,
+                    Opcodes.IF_ICMPLE -> {
+                String ifType = switch (opcode) {
+                    case Opcodes.IF_ICMPEQ, Opcodes.IF_ACMPEQ -> "!=";
+                    case Opcodes.IF_ICMPNE, Opcodes.IF_ACMPNE -> "=";
+                    case Opcodes.IF_ICMPGT -> "<=";
+                    case Opcodes.IF_ICMPLT -> ">=";
+                    case Opcodes.IF_ICMPGE -> "<";
+                    case Opcodes.IF_ICMPLE -> ">";
+                    default -> throw new IllegalStateException("Unexpected opcode: " + opcode);
+                };
+
+                if(whileRepeat) {
+                    CodeManager.instance.addCodeBlock(new RepeatBlock(ifType, false)
+                            .SetItems(
+                                    stack.remove(stack.size() - 2).getTransformedValue(),
+                                    stack.remove(stack.size() - 1).getTransformedValue()
+                            )
                     );
                 } else {
-                    Repeat.While(SubIf.Variable.NotEquals(
-                            stack.remove(stack.size() - 2).getTransformedValue(),
-                            new CodeValue[]{stack.remove(stack.size() - 1).getTransformedValue()}
-                    ));
-                }
-            }
-            case Opcodes.IF_ICMPNE,
-                    Opcodes.IF_ACMPNE -> {
-                if (!whileRepeat) {
-                    If.Variable.Equals(
-                            stack.remove(stack.size() - 2).getTransformedValue(),
-                            new CodeValue[]{stack.remove(stack.size() - 1).getTransformedValue()},
-                            false
+                    CodeManager.instance.addCodeBlock(new IfVariableBlock(ifType, false)
+                            .SetItems(
+                                    stack.remove(stack.size() - 2).getTransformedValue(),
+                                    stack.remove(stack.size() - 1).getTransformedValue()
+                            )
                     );
-                } else {
-                    Repeat.While(SubIf.Variable.Equals(
-                            stack.remove(stack.size() - 2).getTransformedValue(),
-                            new CodeValue[]{stack.remove(stack.size() - 1).getTransformedValue()}
-                    ));
                 }
+
+                CodeManager.instance.addCodeBlock(new BracketBlock(false, whileRepeat));
             }
-            case Opcodes.IF_ICMPGT -> {
-                if (!whileRepeat) {
-                    If.Variable.LessThanOrEqualTo(
-                            (INumber) stack.remove(stack.size() - 2).getTransformedValue(),
-                            (INumber) stack.remove(stack.size() - 1).getTransformedValue(),
-                            false
-                    );
-                } else {
-                    Repeat.While(SubIf.Variable.LessThanOrEqualTo(
-                            (INumber) stack.remove(stack.size() - 2).getTransformedValue(),
-                            (INumber) stack.remove(stack.size() - 1).getTransformedValue()
-                    ));
-                }
-            }
-            case Opcodes.IF_ICMPLT -> {
-                if (!whileRepeat) {
-                    If.Variable.GreaterThanOrEqualTo(
-                            (INumber) stack.remove(stack.size() - 2).getTransformedValue(),
-                            (INumber) stack.remove(stack.size() - 1).getTransformedValue(),
-                            false
-                    );
-                } else {
-                    Repeat.While(SubIf.Variable.GreaterThanOrEqualTo(
-                            (INumber) stack.remove(stack.size() - 2).getTransformedValue(),
-                            (INumber) stack.remove(stack.size() - 1).getTransformedValue()
-                    ));
-                }
-            }
-            case Opcodes.IF_ICMPGE -> {
-                if (!whileRepeat) {
-                    If.Variable.LessThan(
-                            (INumber) stack.remove(stack.size() - 2).getTransformedValue(),
-                            (INumber) stack.remove(stack.size() - 1).getTransformedValue(),
-                            false
-                    );
-                } else {
-                    Repeat.While(SubIf.Variable.LessThan(
-                            (INumber) stack.remove(stack.size() - 2).getTransformedValue(),
-                            (INumber) stack.remove(stack.size() - 1).getTransformedValue()
-                    ));
-                }
-            }
-            case Opcodes.IF_ICMPLE -> {
-                if (!whileRepeat) {
-                    If.Variable.GreaterThan(
-                            (INumber) stack.remove(stack.size() - 2).getTransformedValue(),
-                            (INumber) stack.remove(stack.size() - 1).getTransformedValue(),
-                            false
-                    );
-                } else {
-                    Repeat.While(SubIf.Variable.GreaterThan(
-                            (INumber) stack.remove(stack.size() - 2).getTransformedValue(),
-                            (INumber) stack.remove(stack.size() - 1).getTransformedValue()
-                    ));
-                }
-            }
-            case Opcodes.IFEQ -> {
+            case Opcodes.IFEQ,
+                    Opcodes.IFNE,
+                    Opcodes.IFLT,
+                    Opcodes.IFGE,
+                    Opcodes.IFGT,
+                    Opcodes.IFLE -> {
                 IStackValue stackValue = stack.remove(stack.size() - 1);
+
+                String ifType = switch (opcode) {
+                    case Opcodes.IFEQ -> "!=";
+                    case Opcodes.IFNE -> "=";
+                    case Opcodes.IFLT -> ">=";
+                    case Opcodes.IFGE -> "<";
+                    case Opcodes.IFGT -> "<=";
+                    case Opcodes.IFLE -> ">";
+                    default -> throw new IllegalStateException("Unexpected opcode: " + opcode);
+                };
+
+                CodeValue[] items;
+                boolean inverseIf = false;
 
                 if(stackValue instanceof CompareStackValue) {
                     CompareStackValue.CompareType compareType = ((CompareStackValue) stackValue).getCompareType();
+                    items = new CodeValue[] {
+                            ((CompareStackValue) stackValue).getStackValue1().getTransformedValue(),
+                            ((CompareStackValue) stackValue).getStackValue2().getTransformedValue()
+                    };
 
                     if(compareType == CompareStackValue.CompareType.NORMAL) {
-                        if (!whileRepeat) {
-                            If.Variable.Equals(
-                                    ((CompareStackValue) stackValue).getStackValue1().getTransformedValue(),
-                                    new CodeValue[]{((CompareStackValue) stackValue).getStackValue2().getTransformedValue()},
-                                    false
-                            );
-                        } else {
-                            Repeat.While(SubIf.Variable.Equals(
-                                    ((CompareStackValue) stackValue).getStackValue1().getTransformedValue(),
-                                    new CodeValue[]{((CompareStackValue) stackValue).getStackValue2().getTransformedValue()}
-                            ));
-                        }
+                        inverseIf = true;
                     } else if(compareType == CompareStackValue.CompareType.LIST_CONTAINS) {
-                        if (!whileRepeat) {
-                            If.Variable.ListContainsValue(
-                                    ((ReferencedStackValue) ((CompareStackValue) stackValue).getStackValue1()).getReference(),
-                                    new CodeValue[]{((CompareStackValue) stackValue).getStackValue2().getTransformedValue()},
-                                    false
-                            );
-                        } else {
-                            Repeat.While(SubIf.Variable.ListContainsValue(
-                                    ((ReferencedStackValue) ((CompareStackValue) stackValue).getStackValue1()).getReference(),
-                                    new CodeValue[]{((CompareStackValue) stackValue).getStackValue2().getTransformedValue()}
-                            ));
-                        }
+                        ifType = "ListContains";
+                        inverseIf = opcode == Opcodes.IFNE;
                     }
                 } else {
-                    if (!whileRepeat) {
-                        If.Variable.NotEquals(
-                                stackValue.getTransformedValue(),
-                                new CodeValue[] { new Number().Set(0) },
-                                false
-                        );
-                    } else {
-                        Repeat.While(SubIf.Variable.NotEquals(
-                                stackValue.getTransformedValue(),
-                                new CodeValue[] { new Number().Set(0) }
-                        ));
-                    }
+                    items = new CodeValue[] {
+                            stackValue.getTransformedValue(),
+                            new Number().Set(0)
+                    };
                 }
-            }
-            case Opcodes.IFNE -> {
-                IStackValue stackValue = stack.remove(stack.size() - 1);
 
-                if(stackValue instanceof CompareStackValue) {
-                    CompareStackValue.CompareType compareType = ((CompareStackValue) stackValue).getCompareType();
-
-                    if(compareType == CompareStackValue.CompareType.NORMAL) {
-                        if (!whileRepeat) {
-                            If.Variable.NotEquals(
-                                    ((CompareStackValue) stackValue).getStackValue1().getTransformedValue(),
-                                    new CodeValue[]{((CompareStackValue) stackValue).getStackValue2().getTransformedValue()},
-                                    false
-                            );
-                        } else {
-                            Repeat.While(SubIf.Variable.NotEquals(
-                                    ((CompareStackValue) stackValue).getStackValue1().getTransformedValue(),
-                                    new CodeValue[]{((CompareStackValue) stackValue).getStackValue2().getTransformedValue()}
-                            ));
-                        }
-                    } else if(compareType == CompareStackValue.CompareType.LIST_CONTAINS) {
-                        if (!whileRepeat) {
-                            If.Variable.ListContainsValue(
-                                    ((ReferencedStackValue) ((CompareStackValue) stackValue).getStackValue1()).getReference(),
-                                    new CodeValue[]{((CompareStackValue) stackValue).getStackValue2().getTransformedValue()},
-                                    true
-                            );
-                        } else {
-                            Repeat.While(SubIf.Variable.ListContainsValue(
-                                    ((ReferencedStackValue) ((CompareStackValue) stackValue).getStackValue1()).getReference(),
-                                    new CodeValue[]{((CompareStackValue) stackValue).getStackValue2().getTransformedValue()}
-                            ).InverseIf());
-                        }
-                    }
+                if(whileRepeat) {
+                    CodeManager.instance.addCodeBlock(new RepeatBlock(ifType, inverseIf)
+                            .SetItems(items)
+                    );
                 } else {
-                    if (!whileRepeat) {
-                        If.Variable.Equals(
-                                stackValue.getTransformedValue(),
-                                new CodeValue[] { new Number().Set(0) },
-                                false
-                        );
-                    } else {
-                        Repeat.While(SubIf.Variable.Equals(
-                                stackValue.getTransformedValue(),
-                                new CodeValue[] { new Number().Set(0) }
-                        ));
-                    }
+                    CodeManager.instance.addCodeBlock(new IfVariableBlock(ifType, inverseIf)
+                            .SetItems(items)
+                    );
                 }
-            }
-            case Opcodes.IFLT -> {
-                IStackValue stackValue = stack.remove(stack.size() - 1);
 
-                if(stackValue instanceof CompareStackValue
-                        && ((CompareStackValue) stackValue).getCompareType() == CompareStackValue.CompareType.NORMAL) {
-                    if (!whileRepeat) {
-                        If.Variable.LessThan(
-                                (INumber) ((CompareStackValue) stackValue).getStackValue1().getTransformedValue(),
-                                (INumber) ((CompareStackValue) stackValue).getStackValue2().getTransformedValue(),
-                                false
-                        );
-                    } else {
-                        Repeat.While(SubIf.Variable.LessThan(
-                                (INumber) ((CompareStackValue) stackValue).getStackValue1().getTransformedValue(),
-                                (INumber) ((CompareStackValue) stackValue).getStackValue2().getTransformedValue()
-                        ));
-                    }
-                } else {
-                    if (!whileRepeat) {
-                        If.Variable.GreaterThanOrEqualTo(
-                                (INumber) stackValue.getTransformedValue(),
-                                new Number().Set(0),
-                                false
-                        );
-                    } else {
-                        Repeat.While(SubIf.Variable.GreaterThanOrEqualTo(
-                                (INumber) stackValue.getTransformedValue(),
-                                new Number().Set(0)
-                        ));
-                    }
-                }
-            }
-            case Opcodes.IFGE -> {
-                IStackValue stackValue = stack.remove(stack.size() - 1);
-
-                if(stackValue instanceof CompareStackValue
-                        && ((CompareStackValue) stackValue).getCompareType() == CompareStackValue.CompareType.NORMAL) {
-                    if (!whileRepeat) {
-                        If.Variable.GreaterThanOrEqualTo(
-                                (INumber) ((CompareStackValue) stackValue).getStackValue1().getTransformedValue(),
-                                (INumber) ((CompareStackValue) stackValue).getStackValue2().getTransformedValue(),
-                                false
-                        );
-                    } else {
-                        Repeat.While(SubIf.Variable.GreaterThanOrEqualTo(
-                                (INumber) ((CompareStackValue) stackValue).getStackValue1().getTransformedValue(),
-                                (INumber) ((CompareStackValue) stackValue).getStackValue2().getTransformedValue()
-                        ));
-                    }
-                } else {
-                    if (!whileRepeat) {
-                        If.Variable.LessThan(
-                                (INumber) stackValue.getTransformedValue(),
-                                new Number().Set(0),
-                                false
-                        );
-                    } else {
-                        Repeat.While(SubIf.Variable.LessThan(
-                                (INumber) stackValue.getTransformedValue(),
-                                new Number().Set(0)
-                        ));
-                    }
-                }
-            }
-            case Opcodes.IFGT -> {
-                IStackValue stackValue = stack.remove(stack.size() - 1);
-
-                if(stackValue instanceof CompareStackValue
-                        && ((CompareStackValue) stackValue).getCompareType() == CompareStackValue.CompareType.NORMAL) {
-                    if (!whileRepeat) {
-                        If.Variable.GreaterThan(
-                                (INumber) ((CompareStackValue) stackValue).getStackValue1().getTransformedValue(),
-                                (INumber) ((CompareStackValue) stackValue).getStackValue2().getTransformedValue(),
-                                false
-                        );
-                    } else {
-                        Repeat.While(SubIf.Variable.GreaterThan(
-                                (INumber) ((CompareStackValue) stackValue).getStackValue1().getTransformedValue(),
-                                (INumber) ((CompareStackValue) stackValue).getStackValue2().getTransformedValue()
-                        ));
-                    }
-                } else {
-                    if (!whileRepeat) {
-                        If.Variable.LessThanOrEqualTo(
-                                (INumber) stackValue.getTransformedValue(),
-                                new Number().Set(0),
-                                false
-                        );
-                    } else {
-                        Repeat.While(SubIf.Variable.LessThanOrEqualTo(
-                                (INumber) stackValue.getTransformedValue(),
-                                new Number().Set(0)
-                        ));
-                    }
-                }
-            }
-            case Opcodes.IFLE -> {
-                IStackValue stackValue = stack.remove(stack.size() - 1);
-
-                if(stackValue instanceof CompareStackValue
-                        && ((CompareStackValue) stackValue).getCompareType() == CompareStackValue.CompareType.NORMAL) {
-                    if (!whileRepeat) {
-                        If.Variable.LessThanOrEqualTo(
-                                (INumber) ((CompareStackValue) stackValue).getStackValue1().getTransformedValue(),
-                                (INumber) ((CompareStackValue) stackValue).getStackValue2().getTransformedValue(),
-                                false
-                        );
-                    } else {
-                        Repeat.While(SubIf.Variable.LessThanOrEqualTo(
-                                (INumber) ((CompareStackValue) stackValue).getStackValue1().getTransformedValue(),
-                                (INumber) ((CompareStackValue) stackValue).getStackValue2().getTransformedValue()
-                        ));
-                    }
-                } else {
-                    if (!whileRepeat) {
-                        If.Variable.GreaterThan(
-                                (INumber) stackValue.getTransformedValue(),
-                                new Number().Set(0),
-                                false
-                        );
-                    } else {
-                        Repeat.While(SubIf.Variable.GreaterThan(
-                                (INumber) stackValue.getTransformedValue(),
-                                new Number().Set(0)
-                        ));
-                    }
-                }
+                CodeManager.instance.addCodeBlock(new BracketBlock(false, whileRepeat));
             }
             case Opcodes.GOTO -> {
                 if (startRepeatBracketIndices.contains(jumpToIndex)
@@ -2490,5 +2131,13 @@ public class CompilerMethodVisitor extends MethodVisitor {
 
         throw new IllegalStateException("Jump instructions are not supported ! (Opcode: " + opcode + ")\n"
                 + "Method: " + Type.getInternalName(class_) + ">" + method.getName() + method.getDescriptor() + ":" + lineNumber);
+    }
+
+    private Variable getTempVariable() {
+        return new Variable("_jco>" + method.getName() + ">" + (blockOperationIndex++), Variable.Scope.LOCAL);
+    }
+
+    private String getTempVariableName() {
+        return "_jco>" + method.getName() + ">" + (blockOperationIndex++);
     }
 }
