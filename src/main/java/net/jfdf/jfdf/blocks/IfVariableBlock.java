@@ -14,13 +14,18 @@ public class IfVariableBlock implements CodeBlock {
 	private List<Tag> tags = new ArrayList<Tag>();
     
 	private boolean inverseIf = false;
-    private final Type type;
+    private final String type;
 	
 	public IfVariableBlock(Type type) {
-        this.type = type;
+        this.type = type.getJSONValue();
 	}
 
 	public IfVariableBlock(Type type, boolean inverseIf) {
+		this.type = type.getJSONValue();
+		this.inverseIf = inverseIf;
+	}
+
+	public IfVariableBlock(String type, boolean inverseIf) {
 		this.type = type;
 		this.inverseIf = inverseIf;
 	}
@@ -42,7 +47,7 @@ public class IfVariableBlock implements CodeBlock {
 		
 		for (final Tag tag : tags) {
             tag.setBlock("if_var");
-            tag.setAction(type.getJSONValue());
+            tag.setAction(type);
 		}
 		
 		return this;
@@ -66,7 +71,7 @@ public class IfVariableBlock implements CodeBlock {
 		}
 		
 		json += String.join(",", itemsJSON);
-        json += "]},\"action\":\"" + type.getJSONValue() + (inverseIf ? "\",\"inverted\":\"NOT\"" : "\"") + "}";
+        json += "]},\"action\":\"" + type + (inverseIf ? "\",\"inverted\":\"NOT\"" : "\"") + "}";
 		
 		return json;
 	}

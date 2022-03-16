@@ -16,20 +16,26 @@ public class RepeatBlock implements CodeBlock {
 	
 	private final Type repeatType;
 	private boolean inverseIf = false;
-	private SubIfType ifBlock = null;
+	private String ifType = null;
 	
 	public RepeatBlock(final Type repeatType) {
 		this.repeatType = repeatType;
 	}
 	
 	public RepeatBlock(final SubIfType ifBlock) {
-		this.inverseIf = true;
-		this.ifBlock = ifBlock;
+		this.inverseIf = false;
+		this.ifType = ifBlock.getSubJSONValue();
 		this.repeatType = Type.WHILE;
 	}
 
 	public RepeatBlock(final SubIfType ifBlock, final boolean inverseIf) {
-		this.ifBlock = ifBlock;
+		this.ifType = ifBlock.getSubJSONValue();
+		this.repeatType = Type.WHILE;
+		this.inverseIf = inverseIf;
+	}
+
+	public RepeatBlock(String ifType, final boolean inverseIf) {
+		this.ifType = ifType;
 		this.repeatType = Type.WHILE;
 		this.inverseIf = inverseIf;
 	}
@@ -52,7 +58,7 @@ public class RepeatBlock implements CodeBlock {
 		String actionValue = repeatType.getJSONValue();
 
 		for (final Tag tag : tags) {
-			if(ifBlock == null) {
+			if(ifType == null) {
 				tag.setBlock("repeat");
 				tag.setAction(actionValue);
 			}
@@ -67,7 +73,7 @@ public class RepeatBlock implements CodeBlock {
 		String actionValue = repeatType.getJSONValue();
 
 		for (final Tag tag : tags) {
-			if(ifBlock == null) {
+			if(ifType == null) {
 				tag.setBlock("repeat");
 				tag.setAction(actionValue);
 			}
@@ -99,7 +105,7 @@ public class RepeatBlock implements CodeBlock {
 		json += "]},\"action\":\"" + actionValue + "\"";
 		
 		if(actionValue.equals("While")) {
-			json += ",\"subAction\":\"" + ifBlock.getSubJSONValue() +"\"" + (inverseIf ? ",\"inverted\":\"NOT\"" : "");
+			json += ",\"subAction\":\"" + ifType +"\"" + (inverseIf ? ",\"inverted\":\"NOT\"" : "");
 		}
 
 		json += "}";
