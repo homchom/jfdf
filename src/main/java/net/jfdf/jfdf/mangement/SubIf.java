@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 
 import net.jfdf.jfdf.values.*;
-import net.jfdf.jfdf.values.Variable;
 import net.jfdf.jfdf.values.Number;
 import net.jfdf.jfdf.values.Tags.*;
 
@@ -47,6 +46,11 @@ public class SubIf {
 
     public SubIf InverseIf() {
         this.inverseIf = !this.inverseIf;
+        return this;
+    }
+
+    public SubIf SetInverted(boolean inverseIf) {
+        this.inverseIf = inverseIf;
         return this;
     }
     
