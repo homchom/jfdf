@@ -364,7 +364,9 @@ public class CompilerMethodVisitor extends MethodVisitor {
                     );
                 }
 
-                ReferenceUtils.incrementIfReference(valueDescriptor, (INumber) value.getTransformedValue());
+                if(value.getTransformedValue() instanceof INumber) {
+                    ReferenceUtils.incrementIfReference(valueDescriptor, (INumber) value.getTransformedValue());
+                }
             }
             case Opcodes.POP ->
                 stack.remove(stack.size() - 1);
@@ -2003,14 +2005,38 @@ public class CompilerMethodVisitor extends MethodVisitor {
         instructionIndex++;
 
         boolean whileRepeat = false;
+        boolean invertIf = false;
+
+        boolean continueIf = false;
+        boolean breakIf = false;
+
         int jumpToIndex = ((JumpInstructionData) instructionDataList.get(instructionIndex)).jumpToInstructionIndex;
         if (opcode >= Opcodes.IFEQ && opcode <= Opcodes.IF_ACMPNE) {
-            InstructionData beforeLabelInsn = instructionDataList.get(jumpToIndex - 1);
-            if (beforeLabelInsn.instructionOpcode == Opcodes.GOTO) {
-                JumpInstructionData gotoInsn = (JumpInstructionData) beforeLabelInsn;
+            if(endBracketIndices.contains(-jumpToIndex)) {
+                if(endBracketIndices.get(endBracketIndices.size() - 1) == -jumpToIndex) {
+                    breakIf = true;
+                    invertIf = true;
+                } else {
+                    throw new IllegalStateException("break label is not supported !");
+                }
+            } else {
+                InstructionData beforeLabelInsn = instructionDataList.get(jumpToIndex - 1);
 
-                if (gotoInsn.jumpToInstructionIndex == labelInstructionIndex) {
-                    whileRepeat = true;
+                if (beforeLabelInsn.instructionOpcode == Opcodes.GOTO) {
+                    JumpInstructionData gotoInsn = (JumpInstructionData) beforeLabelInsn;
+
+                    if (gotoInsn.jumpToInstructionIndex == labelInstructionIndex) {
+                        whileRepeat = true;
+                    }
+                }
+            }
+
+            if(startRepeatBracketIndices.contains(jumpToIndex)) {
+                if(startRepeatBracketIndices.get(startRepeatBracketIndices.size() - 1) == jumpToIndex) {
+                    continueIf = true;
+                    invertIf = true;
+                } else {
+                    throw new IllegalStateException("continue label is not supported !");
                 }
             }
         }
@@ -2035,14 +2061,14 @@ public class CompilerMethodVisitor extends MethodVisitor {
                 };
 
                 if(whileRepeat) {
-                    CodeManager.instance.addCodeBlock(new RepeatBlock(ifType, false)
+                    CodeManager.instance.addCodeBlock(new RepeatBlock(ifType, invertIf)
                             .SetItems(
                                     stack.remove(stack.size() - 2).getTransformedValue(),
                                     stack.remove(stack.size() - 1).getTransformedValue()
                             )
                     );
                 } else {
-                    CodeManager.instance.addCodeBlock(new IfVariableBlock(ifType, false)
+                    CodeManager.instance.addCodeBlock(new IfVariableBlock(ifType, invertIf)
                             .SetItems(
                                     stack.remove(stack.size() - 2).getTransformedValue(),
                                     stack.remove(stack.size() - 1).getTransformedValue()
@@ -2071,7 +2097,6 @@ public class CompilerMethodVisitor extends MethodVisitor {
                 };
 
                 CodeValue[] items;
-                boolean inverseIf = false;
 
                 if(stackValue instanceof CompareStackValue) {
                     CompareStackValue.CompareType compareType = ((CompareStackValue) stackValue).getCompareType();
@@ -2081,10 +2106,10 @@ public class CompilerMethodVisitor extends MethodVisitor {
                     };
 
                     if(compareType == CompareStackValue.CompareType.NORMAL) {
-                        inverseIf = true;
+                        invertIf = !invertIf;
                     } else if(compareType == CompareStackValue.CompareType.LIST_CONTAINS) {
                         ifType = "ListContains";
-                        inverseIf = opcode == Opcodes.IFNE;
+                        invertIf = (opcode == Opcodes.IFNE) != invertIf;
                     }
                 } else {
                     items = new CodeValue[] {
@@ -2094,11 +2119,11 @@ public class CompilerMethodVisitor extends MethodVisitor {
                 }
 
                 if(whileRepeat) {
-                    CodeManager.instance.addCodeBlock(new RepeatBlock(ifType, inverseIf)
+                    CodeManager.instance.addCodeBlock(new RepeatBlock(ifType, invertIf)
                             .SetItems(items)
                     );
                 } else {
-                    CodeManager.instance.addCodeBlock(new IfVariableBlock(ifType, inverseIf)
+                    CodeManager.instance.addCodeBlock(new IfVariableBlock(ifType, invertIf)
                             .SetItems(items)
                     );
                 }
@@ -2111,10 +2136,23 @@ public class CompilerMethodVisitor extends MethodVisitor {
                     startRepeatBracketIndices.remove((Object) jumpToIndex);
                     return;
                 } else if(startRepeatBracketIndices.contains(jumpToIndex)) {
-                    Control.Skip();
+                    if(startRepeatBracketIndices.get(startRepeatBracketIndices.size() - 1) == jumpToIndex) {
+                        Control.Skip();
+                    } else {
+                        throw new IllegalStateException("continue label is not supported !");
+                    }
+
                     return;
                 } else if(endBracketIndices.contains(-jumpToIndex)) {
-                    Control.StopRepeat();
+                    if(endBracketIndices
+                            .stream()
+                            .max(Comparator.naturalOrder())
+                            .orElse(0) == -jumpToIndex) {
+                        Control.StopRepeat();
+                    } else {
+                        throw new IllegalStateException("break label is not supported !");
+                    }
+
                     return;
                 }
             }
@@ -2122,10 +2160,19 @@ public class CompilerMethodVisitor extends MethodVisitor {
 
         // Checks if instruction is if instruction
         if (opcode >= Opcodes.IFEQ && opcode <= Opcodes.IF_ACMPNE) {
-            if (whileRepeat) startRepeatBracketIndices.add(labelInstructionIndex);
+            if(breakIf) {
+                Control.StopRepeat();
+                If.End();
+            } else if(continueIf) {
+                Control.Skip();
+                If.End();
+            } else {
+                if (whileRepeat) startRepeatBracketIndices.add(labelInstructionIndex);
 
-            // Adds end bracket's label index (If: Positive index, Repeat: Negative index)
-            endBracketIndices.add(whileRepeat ? -jumpToIndex : jumpToIndex);
+                // Adds end bracket's label index (If: Positive index, Repeat: Negative index)
+                endBracketIndices.add(whileRepeat ? -jumpToIndex : jumpToIndex);
+            }
+
             return;
         }
 
