@@ -76,7 +76,8 @@ public class GameValue implements CodeValue, IText, INumber, ILocation, IItem {
         CLICKED_SLOT_INDEX("Clicked Slot Index"),
         CLICKED_SLOT_ITEM("Clicked Slot Item"),
         NEW_CLICKED_SLOT_ITEM("New Clicked Slot Item"),
-        INVENTORY_CLOSE_CAUSE("Inventory Close Cause");
+        INVENTORY_CLOSE_CAUSE("Inventory Close Cause"),
+        TIMESTAMP("Timestamp");
 
 		private final static Map<Integer, Value> values = new HashMap<>();
 
