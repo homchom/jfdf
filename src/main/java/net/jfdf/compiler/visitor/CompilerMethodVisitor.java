@@ -342,16 +342,18 @@ public class CompilerMethodVisitor extends MethodVisitor {
                 IStackValue index = stack.remove(stack.size() - 2);
                 IStackValue value = stack.remove(stack.size() - 1);
 
+                String elementDescriptor = Type.getType(array.getDescriptor()).getElementType().getDescriptor();
                 String valueDescriptor = value.getDescriptor();
 
                 if(array instanceof ArrayStackValue) {
                     ArrayStackValue arrayStackValue = (ArrayStackValue) array;
 
                     if(opcode == Opcodes.AASTORE) {
-                        References.decrementRefCount(
+                        ReferenceUtils.decrementIfReference(
+                                elementDescriptor,
                                 NumberMath.listValue(
                                         arrayStackValue.getReference(),
-                                        (INumber) index.getTransformedValue()
+                                        NumberMath.add((INumber) index.getTransformedValue(), new Number().Set(2))
                                 )
                         );
                     }
@@ -365,7 +367,8 @@ public class CompilerMethodVisitor extends MethodVisitor {
                     INumber newIndex = NumberMath.add((INumber) index.getTransformedValue(), new Number().Set(2));
 
                     if(opcode == Opcodes.AASTORE) {
-                        References.decrementRefCount(
+                        ReferenceUtils.decrementIfReference(
+                                elementDescriptor,
                                 NumberMath.listValue(
                                         reference,
                                         newIndex
