@@ -25,8 +25,8 @@ public class GameValue implements CodeValue, IText, INumber, ILocation, IItem {
 
     public enum Value {
         TOTAL_PLAYER_COUNT("Player Count"),
-        CPU_USAGE_PERCENT("CPU Usage Percent"),
-        SERVER_TPS("Server Ticks Per Second (TPS)"),
+        CPU_USAGE_PERCENT("CPU Usage"),
+        SERVER_TPS("Server TPS"),
         SELECTION_SIZE("Selection Size"),
         SELECTION_TARGET_NAMES("Selection Target Names"),
         CURRENT_HEALTH("Current Health"),
