@@ -21,7 +21,7 @@ public class ProcessBlock implements CodeHeader {
 		
 		for (Tag tag : tags) {
 			tag.setAction("dynamic");
-			tag.setBlock("func");
+			tag.setBlock("process");
 		}
 		
 		return this;
@@ -30,17 +30,17 @@ public class ProcessBlock implements CodeHeader {
 	public String asJSON() {
 		String json = "{\"id\":\"block\",\"block\":\"process\",\"args\":{\"items\":[";
 		List<String> itemsJSON = new ArrayList<>();
-		
+
 		if(tags.size() > 9) tags = tags.subList(0, 8);
 		if(items.size() > (27 - tags.size())) items = items.subList(0, 26 - tags.size());
-		
+
 		for (int i = 0; i < items.size(); i++) {
 			CodeValue codeValue = items.get(i);
 			itemsJSON.add("{\"item\":" + codeValue.asJSON() + ",\"slot\":" + i + "}");
 		}
 
-		for (int i = 26; i > (27 - tags.size()); i--) {
-			Tag tag = tags.get(i);
+		for (int i = 26; i >= 27 - tags.size(); i--) {
+			Tag tag = tags.get(26 - i);
 			itemsJSON.add("{\"item\":" + tag.asJSON() + ",\"slot\":" + i + "}");
 		}
 		
