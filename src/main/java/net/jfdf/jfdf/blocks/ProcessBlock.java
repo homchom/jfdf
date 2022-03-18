@@ -8,8 +8,8 @@ import net.jfdf.jfdf.values.CodeValue;
 import net.jfdf.jfdf.values.Tag;
 
 public class ProcessBlock implements CodeHeader {
-	private List<CodeValue> items = new ArrayList<CodeValue>();
-	private List<Tag> tags = new ArrayList<Tag>();
+	private List<CodeValue> items = new ArrayList<>();
+	private List<Tag> tags = new ArrayList<>();
 	private final String name;
 
 	public ProcessBlock(String name) {
@@ -29,7 +29,7 @@ public class ProcessBlock implements CodeHeader {
 
 	public String asJSON() {
 		String json = "{\"id\":\"block\",\"block\":\"process\",\"args\":{\"items\":[";
-		List<String> itemsJSON = new ArrayList<String>();
+		List<String> itemsJSON = new ArrayList<>();
 		
 		if(tags.size() > 9) tags = tags.subList(0, 8);
 		if(items.size() > (27 - tags.size())) items = items.subList(0, 26 - tags.size());
@@ -45,7 +45,7 @@ public class ProcessBlock implements CodeHeader {
 		}
 		
 		json += String.join(",", itemsJSON);
-		json += "]},\"action\":\"dynamic\"}";
+		json += "]},\"data\":\"" + name + "\"}";
 		
 		return json;
 	}
