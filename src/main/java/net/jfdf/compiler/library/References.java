@@ -48,6 +48,10 @@ public class References {
                 )
         );
 
+        deletedReferences.removeAt(
+                new Number().Set(1)
+        );
+
         VariableControl.Increment(memoryUsage, new Number().SetToString("0.01"));
         VariableControl.Decrement(functionDepth);
         Control.Return();
@@ -180,7 +184,7 @@ public class References {
             VariableControl.Set(reference, new Number().Set(0.0f));
 
             If.Variable.Equals(pointer, new CodeValue[]{referenceCount}, false);
-                referenceCountList.remove(NumberMath.add(pointer, new Number().Set(1)));
+                referenceCountList.removeAt(NumberMath.add(pointer, new Number().Set(1)));
 
                 VariableControl.Decrement(memoryUsage, new Number().SetToString("0.01"));
                 VariableControl.Decrement(referenceCount);
@@ -188,6 +192,8 @@ public class References {
             If.End();
 
             VariableControl.Decrement(memoryUsage, new Number().SetToString("0.01"));
+
+            referenceCountList.set(NumberMath.add(pointer, new Number().Set(1)), new Number().SetToString("-0.404"));
             deletedReferences.add(pointer);
         Repeat.End();
     }
