@@ -1,8 +1,12 @@
 package net.jfdf.compiler.data.stack;
 
+import net.jfdf.jfdf.blocks.RepeatBlock;
+import net.jfdf.jfdf.blocks.SetVariableBlock;
+import net.jfdf.jfdf.mangement.CodeManager;
 import net.jfdf.jfdf.mangement.Functions;
 import net.jfdf.jfdf.mangement.VariableControl;
 import net.jfdf.jfdf.values.CodeValue;
+import net.jfdf.jfdf.values.Number;
 import net.jfdf.jfdf.values.Text;
 import net.jfdf.jfdf.values.Variable;
 
@@ -13,10 +17,15 @@ public abstract class ReferencedStackValue implements IStackValue {
     protected final Variable pointer;
     protected final Variable reference;
 
+    private boolean resetDone = false;
+    private final int resetIndex;
+
     protected ReferencedStackValue(String methodName, int blockOperatorIndex) {
         this.allocationVariableName = new Text().Set("_jco>" + methodName + ">" + blockOperatorIndex);
         this.pointer = new Variable("_jco>" + methodName + ">" + blockOperatorIndex, Variable.Scope.LOCAL);
         this.reference = new Variable("_jfdfR%var(_jco>" + methodName + ">" + blockOperatorIndex + ")", Variable.Scope.NORMAL);
+
+        resetIndex = CodeManager.instance.getActiveCodeBlocks().size();
 
         VariableControl.Set(new Variable("_jfdfPFD", Variable.Scope.LOCAL), new Variable("_jfdfFD", Variable.Scope.LOCAL));
         VariableControl.Increment(new Variable("_jfdfFD", Variable.Scope.LOCAL));
@@ -36,6 +45,17 @@ public abstract class ReferencedStackValue implements IStackValue {
         pointer.setScope(scope);
 
         allocationMethod.Set(scope.equals(Variable.Scope.NORMAL) ? "_jfdf>std>salloc" : "_jfdf>std>sallocl");
+    }
+
+    public void resetBeforeAllocate() {
+        if(!resetDone) {
+            CodeManager.instance.getActiveCodeBlocks().add(
+                    resetIndex,
+                    new SetVariableBlock("=").SetItems(pointer, new Number().Set(0))
+            );
+
+            resetDone = true;
+        }
     }
 
     public Text getAllocationMethod() {

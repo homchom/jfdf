@@ -197,12 +197,31 @@ public class References {
         List referenceCountList = new List(new Variable("_jfdfRCL", Variable.Scope.NORMAL));
         List freePointers = new List("_jfdffa>%var(tmp2)>0");
 
+        Variable reference = new Variable("_jfdfR%var(tmp0)", Variable.Scope.NORMAL);
         Variable referencePointer = new Variable("tmp0", Variable.Scope.LOCAL);
         Variable referenceCounter = new Variable("tmp1", Variable.Scope.LOCAL);
+
+        Variable listPointer = new Variable("tmp3", Variable.Scope.LOCAL);
+        Variable listIndex = new Variable("tmp4", Variable.Scope.LOCAL);
 
         VariableControl.Set(referencePointer, new Number().Set(1.0f));
         Repeat.ForEach(referenceCounter, referenceCountList);
             If.Variable.Equals(referenceCounter, new CodeValue[]{ new Number().Set(0.0f) }, false);
+                If.Variable.IsType(reference, Tags.VariableType.LIST, false);
+                    VariableControl.GetListValue(listPointer, reference, new Number().Set(1));
+
+                    If.Variable.Equals(listPointer, new CodeValue[]{ new Text().Set("\0r") }, false);
+                        VariableControl.Set(listIndex, new Number().Set(1));
+                        Repeat.ForEach(listPointer, reference);
+                            If.Variable.NotEquals(listIndex, new Number[]{ new Number().Set(1) }, false);
+                                decrementRefCount(listPointer);
+                            If.End();
+
+                            VariableControl.Increment(listIndex, new Number().Set(1));
+                        Repeat.End();
+                    If.End();
+                If.End();
+
                 freePointers.add(referencePointer);
             If.End();
 
@@ -229,19 +248,23 @@ public class References {
 
     @NoCompile
     public static void incrementRefCount(INumber pointer) {
-        VariableControl.SetListValue(
-                referenceCountList,
-                pointer,
-                Number.Add(NumberMath.listValue(referenceCountList, pointer), new Number().Set(1))
-        );
+        If.Variable.GreaterThan(pointer, new Number().Set(0), false);
+            VariableControl.SetListValue(
+                    referenceCountList,
+                    pointer,
+                    Number.Add(NumberMath.listValue(referenceCountList, pointer), new Number().Set(1))
+            );
+        If.End();
     }
 
     @NoCompile
     public static void decrementRefCount(INumber pointer) {
-        VariableControl.SetListValue(
-                referenceCountList,
-                pointer,
-                Number.Subtract(NumberMath.listValue(referenceCountList, pointer), new Number().Set(1))
-        );
+        If.Variable.GreaterThan(pointer, new Number().Set(0), false);
+            VariableControl.SetListValue(
+                    referenceCountList,
+                    pointer,
+                    Number.Subtract(NumberMath.listValue(referenceCountList, pointer), new Number().Set(1))
+            );
+        If.End();
     }
 }

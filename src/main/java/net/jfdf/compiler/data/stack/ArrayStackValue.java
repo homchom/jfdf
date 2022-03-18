@@ -1,5 +1,6 @@
 package net.jfdf.compiler.data.stack;
 
+import net.jfdf.compiler.util.ReferenceUtils;
 import net.jfdf.jfdf.blocks.SetVariableBlock;
 import net.jfdf.jfdf.mangement.CodeManager;
 import net.jfdf.jfdf.mangement.Repeat;
@@ -25,11 +26,12 @@ public class ArrayStackValue extends ReferencedStackValue {
             int arrayLength = ((NumberStackValue) length).getJavaValue().intValue();
 
             // Makes a new array
-            dataList = Arrays.asList(new CodeValue[arrayLength + (int) Math.max(1, Math.ceil(arrayLength / 26.0f))]);
+            dataList = Arrays.asList(new CodeValue[arrayLength + 1 + (int) Math.max(1, Math.ceil(arrayLength / 26.0f))]);
 
             // Fills the array with 0s then sets first block argument to reference's variable
             Collections.fill(dataList, new Number().Set(0));
             dataList.set(0, reference);
+            dataList.set(1, ReferenceUtils.isReferenceDescriptor(descriptor) ? new Text().Set("\0r") : new Text().Set("\0p"));
 
             // Add the blocks
             CodeManager.instance.addCodeBlock(new SetVariableBlock("CreateList").SetItems(dataList.subList(0, Math.min(27, dataList.size()))));
@@ -40,7 +42,7 @@ public class ArrayStackValue extends ReferencedStackValue {
             return;
         }
 
-        VariableControl.CreateList(reference);
+        VariableControl.CreateList(reference, ReferenceUtils.isReferenceDescriptor(descriptor) ? new Text().Set("\0r") : new Text().Set("\0p"));
         Repeat.MultipleTimes(null, (INumber) length.getTransformedValue());
         VariableControl.AppendValue(reference, new Number().Set(0));
         Repeat.End();
@@ -59,13 +61,13 @@ public class ArrayStackValue extends ReferencedStackValue {
     public void set(IStackValue indexValue, CodeValue value) {
         if(dataList != null && indexValue instanceof NumberStackValue
                 && !(value instanceof Variable) && !(value instanceof GameValue)) {
-            int index = ((NumberStackValue) indexValue).getJavaValue().intValue();
+            int index = ((NumberStackValue) indexValue).getJavaValue().intValue() + 1;
 
             dataList.set(index + (int)Math.floor(index / 26.0f) + 1, value);
         } else {
             VariableControl.SetListValue(
                     reference,
-                    NumberMath.add((INumber) indexValue.getTransformedValue(), new Number().Set(1)),
+                    NumberMath.add((INumber) indexValue.getTransformedValue(), new Number().Set(2)),
                     value
             );
         }

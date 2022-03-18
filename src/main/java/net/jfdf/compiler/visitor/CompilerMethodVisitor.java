@@ -283,7 +283,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                 stack.add(
                         new MathFunctionStackValue(
                                 reference,
-                                NumberMath.add((INumber) stack.remove(stack.size() - 1).getTransformedValue(), new Number().Set(1)),
+                                NumberMath.add((INumber) stack.remove(stack.size() - 1).getTransformedValue(), new Number().Set(2)),
                                 MathFunctionStackValue.MathFunction.LIST_VALUE
                         )
                 );
@@ -308,7 +308,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                 VariableControl.GetListValue(
                         value,
                         reference,
-                        NumberMath.add((INumber) stack.remove(stack.size() - 1).getTransformedValue(), new Number().Set(1))
+                        NumberMath.add((INumber) stack.remove(stack.size() - 1).getTransformedValue(), new Number().Set(2))
                 );
 
                 ReferenceUtils.incrementIfReference(elementDescriptor, value);
@@ -346,7 +346,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                     );
                 } else {
                     Variable reference = new Variable("_jfdfR%var(" + ((Variable) array.getTransformedValue()).getName() + ")", Variable.Scope.NORMAL);
-                    INumber newIndex = NumberMath.add((INumber) index.getTransformedValue(), new Number().Set(1));
+                    INumber newIndex = NumberMath.add((INumber) index.getTransformedValue(), new Number().Set(2));
 
                     if(opcode == Opcodes.AASTORE) {
                         References.decrementRefCount(
@@ -586,22 +586,22 @@ public class CompilerMethodVisitor extends MethodVisitor {
                 Control.Return();
             }
             case Opcodes.RETURN -> {
+                int firstLocalVar = (method.isMember() ? 1 : 0)
+                        + Type.getArgumentTypes(method.getDescriptor()).length;
+
+                for (Map.Entry<Integer, String> descriptorEntry : variableDescriptors.entrySet()) {
+                    int var = descriptorEntry.getKey();
+                    String descriptor = descriptorEntry.getValue();
+
+                    if(var >= firstLocalVar) {
+                        Variable valuePointer = new Variable("_jfdffv>%var(_jfdfFD)>" + var, Variable.Scope.LOCAL);
+                        ReferenceUtils.decrementIfReference(descriptor, valuePointer);
+                    }
+                }
+
                 if(isThread) {
                     Functions.Call("_jfdf>std>procEnd");
                 } else {
-                    int firstLocalVar = (method.isMember() ? 1 : 0)
-                            + Type.getArgumentTypes(method.getDescriptor()).length;
-
-                    for (Map.Entry<Integer, String> descriptorEntry : variableDescriptors.entrySet()) {
-                        int var = descriptorEntry.getKey();
-                        String descriptor = descriptorEntry.getValue();
-
-                        if(var >= firstLocalVar) {
-                            Variable valuePointer = new Variable("_jfdffv>%var(_jfdfFD)>" + var, Variable.Scope.LOCAL);
-                            ReferenceUtils.decrementIfReference(descriptor, valuePointer);
-                        }
-                    }
-
                     VariableControl.Decrement(new Variable("_jfdfFD", Variable.Scope.LOCAL), new Number().Set(1));
                     Control.Return();
                 }
@@ -1013,7 +1013,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                                 throw new UnsupportedOperationException("Trying to remove value from array.");
                             }
 
-                            INumber index = NumberMath.add((INumber) stack.remove(stack.size() - 1).getTransformedValue(), new Number().Set(1));
+                            INumber index = NumberMath.add((INumber) stack.remove(stack.size() - 1).getTransformedValue(), new Number().Set(2));
 
                             InstructionData nextInsn = instructionDataList.get(instructionIndex + 1);
                             if(nextInsn.instructionOpcode != Opcodes.POP) {
@@ -1161,7 +1161,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                             stack.add(new VariableStackValue("Ljava/lang/Object;", variableName));
                         }
                         case "set(ILjava/lang/Object;)Ljava/lang/Object;" -> {
-                            INumber index = NumberMath.add((INumber) stack.remove(stack.size() - 1).getTransformedValue(), new Number().Set(1));
+                            INumber index = NumberMath.add((INumber) stack.remove(stack.size() - 1).getTransformedValue(), new Number().Set(2));
                             IStackValue value = stack.remove(stack.size() - 1);
 
                             InstructionData nextInsn = instructionDataList.get(instructionIndex + 1);
