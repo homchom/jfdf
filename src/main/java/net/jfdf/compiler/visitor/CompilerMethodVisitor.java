@@ -1660,10 +1660,17 @@ public class CompilerMethodVisitor extends MethodVisitor {
                     String callDescriptor = descriptor;
 
                     try {
-                        MethodWrapper invokeMethod = MethodWrapper.getWrapper(Class.forName(owner.replace('/', '.')), name, callDescriptor);
+                        Class<?> invokeClass = Class.forName(owner.replace('/', '.'));
+                        MethodWrapper invokeMethod = MethodWrapper.getWrapper(invokeClass, name, callDescriptor);
 
                         if (invokeMethod.getAnnotation(MethodFallback.class) != null) {
                             callDescriptor = invokeMethod.getAnnotation(MethodFallback.class).descriptor();
+
+                            try {
+                                MethodWrapper.getWrapper(invokeClass, name, callDescriptor);
+                            } catch (NoSuchMethodException ignored) {
+                                throw new IllegalStateException("Couldn't find " + name + callDescriptor + ".");
+                            }
                         }
                     } catch (ClassNotFoundException | NoSuchMethodException e) {
                         throw new RuntimeException("Something went wrong.", e);
