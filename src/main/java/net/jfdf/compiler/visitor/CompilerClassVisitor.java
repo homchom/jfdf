@@ -1,6 +1,7 @@
 package net.jfdf.compiler.visitor;
 
 import net.jfdf.compiler.annotation.MethodFallback;
+import net.jfdf.compiler.annotation.NoCompile;
 import net.jfdf.compiler.annotation.NoConstructors;
 import net.jfdf.compiler.util.FieldsManager;
 import net.jfdf.compiler.util.MethodWrapper;
@@ -37,6 +38,12 @@ public class CompilerClassVisitor extends ClassVisitor {
             // Checks if method has fallback annotation
             if(methodWrapper.getAnnotation(MethodFallback.class) != null) {
                 // Removes this method, this method will be replaced by fallback's method when used
+                return null;
+            }
+
+            // Checks if method should not be compiled
+            if(methodWrapper.getAnnotation(NoCompile.class) != null) {
+                // Removes this method
                 return null;
             }
 
