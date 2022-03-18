@@ -3,7 +3,9 @@ package net.jfdf.compiler.library;
 import net.jfdf.compiler.annotation.CompileWithExecute;
 import net.jfdf.compiler.annotation.NoCompile;
 import net.jfdf.compiler.annotation.NoConstructors;
+import net.jfdf.jfdf.blocks.CallProcessBlock;
 import net.jfdf.jfdf.mangement.*;
+import net.jfdf.jfdf.mangement.Process;
 import net.jfdf.jfdf.values.*;
 import net.jfdf.jfdf.values.Number;
 import net.jfdf.transformer.util.NumberMath;
@@ -184,6 +186,21 @@ public class References {
         Repeat.End();
     }
 
+    @Process(name = "_jfdf>std>gcl")
+    @CompileWithExecute
+    private static void garbageCollectorLoop() {
+        Variable functionDepth = new Variable("_jfdfFD", Variable.Scope.LOCAL);
+        Variable gcLastEnded = new Variable("_jfdfGCE", Variable.Scope.GAME);
+
+        Repeat.Forever();
+            VariableControl.Increment(functionDepth);
+            Functions.Call("_jfdf>std>gc");
+
+            VariableControl.Set(gcLastEnded, new GameValue(GameValue.Value.TIMESTAMP));
+            Control.Wait(new Number().Set(1), Tags.TimeUnit.SECONDS);
+        Repeat.End();
+    }
+
     @FunctionWithArgs(
             name = "_jfdf>std>gc",
             iconId = "honey_block",
@@ -241,8 +258,19 @@ public class References {
     )
     @CompileWithExecute
     public static void processEnd() {
-        VariableControl.Increment(new Variable("_jfdfFD", Variable.Scope.LOCAL));
-        Functions.Call("_jfdf>std>gc");
+        Variable gcLastEnded = new Variable("_jfdfGCE", Variable.Scope.GAME);
+        Variable timeSinceGCEnd = new Variable("tmp0", Variable.Scope.LOCAL);
+
+        VariableControl.SetToDifference(timeSinceGCEnd, new GameValue(GameValue.Value.TIMESTAMP), gcLastEnded);
+        If.Variable.GreaterThanOrEqualTo(timeSinceGCEnd, new Number().SetToString("1.05"), false);
+            CodeManager.instance.addCodeBlock(
+                    new CallProcessBlock("_jfdf>std>gcl")
+                            .SetTags(
+                                    new Tag("Target Mode", "With no targets"),
+                                    new Tag("Local Variables", "Don't copy")
+                            )
+            );
+        If.End();
         Control.End();
     }
 
