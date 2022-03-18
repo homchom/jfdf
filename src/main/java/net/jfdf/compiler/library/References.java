@@ -30,8 +30,14 @@ public class References {
         Variable pointer = new Variable("_jfdfRP", Variable.Scope.LOCAL);
         Variable deletedReferencesLength = new Variable("tmp0", Variable.Scope.LOCAL);
         Variable deletedReferencePointer = new Variable("tmp0", Variable.Scope.LOCAL);
+        Variable rclLen = new Variable("tmp1", Variable.Scope.LOCAL);
 
         Variable functionDepth = new Variable("_jfdfFD", Variable.Scope.LOCAL);
+
+        VariableControl.ListLength(rclLen, referenceCountList);
+        If.Variable.Equals(rclLen, new CodeValue[]{ new Number().Set(0) }, false);
+        referenceCountList.add(new Number().Set(0));
+        If.End();
 
         If.Variable.NotEquals(deletedReferences.length(deletedReferencesLength), new CodeValue[]{ new Number().Set(0.0f) }, false);
         VariableControl.Set(
@@ -94,13 +100,13 @@ public class References {
         Functions.Call("_jfdf>std>malloc");
         VariableControl.Set(pointerVariable, returnVariable);
 
-        referenceCountList.set(returnVariable, new Number().Set(1));
+        referenceCountList.set(NumberMath.add(returnVariable, new Number().Set(1)), new Number().Set(1));
         VariableControl.Decrement(functionDepth);
         Control.Return();
         If.End();
 
         VariableControl.Set(returnVariable, pointerVariable);
-        referenceCountList.set(returnVariable, new Number().Set(1));
+        referenceCountList.set(NumberMath.add(returnVariable, new Number().Set(1)), new Number().Set(1));
     }
 
     @FunctionWithArgs(
@@ -144,13 +150,13 @@ public class References {
             Functions.Call("_jfdf>std>malloc");
             VariableControl.Set(pointerVariable, returnVariable);
 
-            referenceCountList.set(returnVariable, new Number().Set(1));
+            referenceCountList.set(NumberMath.add(returnVariable, new Number().Set(1)), new Number().Set(1));
             VariableControl.Decrement(functionDepth);
             Control.Return();
         If.End();
 
         VariableControl.Set(returnVariable, pointerVariable);
-        referenceCountList.set(returnVariable, new Number().Set(1));
+        referenceCountList.set(NumberMath.add(returnVariable, new Number().Set(1)), new Number().Set(1));
     }
 
     @FunctionWithArgs(
@@ -174,7 +180,7 @@ public class References {
             VariableControl.Set(reference, new Number().Set(0.0f));
 
             If.Variable.Equals(pointer, new CodeValue[]{referenceCount}, false);
-                referenceCountList.remove(pointer);
+                referenceCountList.remove(NumberMath.add(pointer, new Number().Set(1)));
 
                 VariableControl.Decrement(memoryUsage, new Number().SetToString("0.01"));
                 VariableControl.Decrement(referenceCount);
@@ -218,14 +224,19 @@ public class References {
 
         Variable reference = new Variable("_jfdfR%var(tmp0)", Variable.Scope.NORMAL);
         Variable referencePointer = new Variable("tmp0", Variable.Scope.LOCAL);
-        Variable referenceCounter = new Variable("tmp1", Variable.Scope.LOCAL);
+        Variable referenceCount = new Variable("tmp1", Variable.Scope.LOCAL);
 
         Variable listPointer = new Variable("tmp3", Variable.Scope.LOCAL);
         Variable listIndex = new Variable("tmp4", Variable.Scope.LOCAL);
 
-        VariableControl.Set(referencePointer, new Number().Set(1.0f));
-        Repeat.ForEach(referenceCounter, referenceCountList);
-            If.Variable.Equals(referenceCounter, new CodeValue[]{ new Number().Set(0.0f) }, false);
+        VariableControl.Set(referencePointer, new Number().Set(0.0f));
+        Repeat.ForEach(referenceCount, referenceCountList);
+            If.Variable.Equals(referencePointer, new CodeValue[]{ new Number().Set(0.0f) }, false);
+                VariableControl.Increment(referencePointer);
+                Control.Skip();
+            If.End();
+
+            If.Variable.Equals(referenceCount, new CodeValue[]{ new Number().Set(0.0f) }, false);
                 If.Variable.IsType(reference, Tags.VariableType.LIST, false);
                     VariableControl.GetListValue(listPointer, reference, new Number().Set(1));
 
@@ -278,23 +289,19 @@ public class References {
 
     @NoCompile
     public static void incrementRefCount(INumber pointer) {
-        If.Variable.GreaterThan(pointer, new Number().Set(0), false);
-            VariableControl.SetListValue(
-                    referenceCountList,
-                    pointer,
-                    Number.Add(NumberMath.listValue(referenceCountList, pointer), new Number().Set(1))
-            );
-        If.End();
+        VariableControl.SetListValue(
+                referenceCountList,
+                NumberMath.add(pointer, new Number().Set(1)),
+                Number.Add(NumberMath.listValue(referenceCountList, NumberMath.add(pointer, new Number().Set(1))), new Number().Set(1))
+        );
     }
 
     @NoCompile
     public static void decrementRefCount(INumber pointer) {
-        If.Variable.GreaterThan(pointer, new Number().Set(0), false);
-            VariableControl.SetListValue(
-                    referenceCountList,
-                    pointer,
-                    Number.Subtract(NumberMath.listValue(referenceCountList, pointer), new Number().Set(1))
-            );
-        If.End();
+        VariableControl.SetListValue(
+                referenceCountList,
+                NumberMath.add(pointer, new Number().Set(1)),
+                Number.Subtract(NumberMath.listValue(referenceCountList, NumberMath.add(pointer, new Number().Set(1))), new Number().Set(1))
+        );
     }
 }
