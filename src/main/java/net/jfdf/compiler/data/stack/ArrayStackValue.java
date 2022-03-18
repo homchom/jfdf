@@ -35,7 +35,7 @@ public class ArrayStackValue extends ReferencedStackValue {
             CodeManager.instance.addCodeBlock(new SetVariableBlock("CreateList").SetItems(dataList.subList(0, Math.min(27, dataList.size()))));
             for (int i = 27; i < dataList.size(); i += 27) {
                 dataList.set(i, reference);
-                CodeManager.instance.addCodeBlock(new SetVariableBlock("AppendValue").SetItems(dataList.subList(i, Math.min(i + 27, arrayLength))));
+                CodeManager.instance.addCodeBlock(new SetVariableBlock("AppendValue").SetItems(dataList.subList(i, Math.min(i + 27, dataList.size()))));
             }
             return;
         }
