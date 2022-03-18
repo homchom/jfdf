@@ -80,6 +80,7 @@ public class References {
             If.Variable.IsType(pointerVariable, Tags.VariableType.NUMBER, false);
                 If.Variable.NotEquals(pointerVariable, new CodeValue[]{ new Number().Set(1.0f) }, false);
                     VariableControl.Set(shouldAlloc, true_);
+                    decrementRefCount(pointerVariable);
                 If.End();
             If.Else();
                 VariableControl.Set(shouldAlloc, true_);
@@ -129,6 +130,7 @@ public class References {
             If.Variable.IsType(pointerVariable, Tags.VariableType.NUMBER, false);
                 If.Variable.NotEquals(pointerVariable, new CodeValue[]{ new Number().Set(1.0f) }, false);
                     VariableControl.Set(shouldAlloc, true_);
+                    decrementRefCount(pointerVariable);
                 If.End();
             If.Else();
                 VariableControl.Set(shouldAlloc, true_);
