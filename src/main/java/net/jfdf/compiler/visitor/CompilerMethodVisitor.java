@@ -59,6 +59,22 @@ public class CompilerMethodVisitor extends MethodVisitor {
 
     @Override
     public void visitCode() {
+        Type[] args = Type.getArgumentTypes(method.getDescriptor());
+
+        int argsStartIndex = 0;
+        int argsEndIndex = args.length;
+
+        if(method.isMember()) {
+            argsStartIndex = 1;
+            argsEndIndex += 1;
+
+            variableDescriptors.put(0, class_.descriptorString());
+        }
+
+        for (int i = argsStartIndex; i < argsEndIndex; i++) {
+            variableDescriptors.put(i, args[i - argsStartIndex].getDescriptor());
+        }
+
         if(method.getAnnotation(PlayerEvent.class) != null) {
             CodeManager.instance.addCodeBlocks(
                     new PlayerEventBlock(
