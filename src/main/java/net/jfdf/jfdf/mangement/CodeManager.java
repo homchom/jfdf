@@ -46,6 +46,12 @@ public class CodeManager {
 		} catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException
 				| InvocationTargetException ignored) {}
 	}
+
+	public List<CodeBlock> getActiveCodeBlocks() {
+		@SuppressWarnings("unchecked")
+		List<CodeBlock>[] array = (List<CodeBlock>[]) new List[codeBlocks.size()];
+		return this.codeBlocks.values().toArray(array)[codeBlocks.size() - 1];
+	}
 	
 	public void addCodeBlocks(CodeHeader codeHeader, CodeBlock... codeBlocks) {
 		this.codeBlocks.put(codeHeader, Arrays.asList(codeBlocks));

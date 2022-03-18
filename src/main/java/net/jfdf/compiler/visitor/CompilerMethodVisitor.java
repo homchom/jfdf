@@ -654,8 +654,16 @@ public class CompilerMethodVisitor extends MethodVisitor {
 
             // Checks if value is a new reference object
             if(stackValue instanceof ReferencedStackValue) {
+                ReferencedStackValue referencedStackValue = ((ReferencedStackValue) stackValue);
+
+                if(ReferenceUtils.isReferenceDescriptor(stackValue.getDescriptor())
+                        && !ReferenceUtils.isReferenceDescriptor(variableDescriptor)
+                        && variableDescriptor != null) {
+                    referencedStackValue.resetBeforeAllocate();
+                }
+
                 // Changes array's variable to this variable and updates variable's descriptor
-                ((ReferencedStackValue) stackValue).setAllocationVariable(variableName, Variable.Scope.LOCAL);
+                referencedStackValue.setAllocationVariable(variableName, Variable.Scope.LOCAL);
                 variableDescriptors.put(var, stackValue.getDescriptor());
             } else {
                 // Sets this variable to a value and updates variable's descriptor
