@@ -2154,6 +2154,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                 } else if(endBracketIndices.contains(-jumpToIndex)) {
                     if(endBracketIndices
                             .stream()
+                            .filter(integer -> integer < 0)
                             .max(Comparator.naturalOrder())
                             .orElse(0) == -jumpToIndex) {
                         Control.StopRepeat();
