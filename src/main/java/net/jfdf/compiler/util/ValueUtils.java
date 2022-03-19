@@ -18,6 +18,38 @@ public class ValueUtils {
         return new Variable("", Variable.Scope.LOCAL);
     }
 
+    public static Variable asVariable(boolean variable) {
+        return asVariable((Object) variable);
+    }
+
+    public static Variable asVariable(byte variable) {
+        return asVariable((Object) variable);
+    }
+
+    public static Variable asVariable(short variable) {
+        return asVariable((Object) variable);
+    }
+
+    public static Variable asVariable(int variable) {
+        return asVariable((Object) variable);
+    }
+
+    public static Variable asVariable(long variable) {
+        return asVariable((Object) variable);
+    }
+
+    public static Variable asVariable(float variable) {
+        return asVariable((Object) variable);
+    }
+
+    public static Variable asVariable(double variable) {
+        return asVariable((Object) variable);
+    }
+
+    public static Variable asVariable(char variable) {
+        return asVariable((Object) variable);
+    }
+
     public static IText asText(String text) {
         // Here we do if 1 == 1, so if someone uses IDE for compiled code, it does not show warnings
         if(1 == 1) throw new IllegalStateException("Trying to call ValueUtils.asText(...) with a code running on JVM.");
