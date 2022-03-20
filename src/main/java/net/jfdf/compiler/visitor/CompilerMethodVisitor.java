@@ -182,6 +182,10 @@ public class CompilerMethodVisitor extends MethodVisitor {
             }
         }
 
+        if(method.isConstructor()) {
+            VariableControl.Set(new Variable("_jfdffa>%var(_jfdfFD)>0", Variable.Scope.LOCAL), new Variable("_jfdfRP", Variable.Scope.LOCAL));
+        }
+
         if(method.isStaticInitializer()) {
             MethodsManager.enableHasStaticInitializer(class_);
 
@@ -693,11 +697,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
             }
         } else if(opcode >= Opcodes.ILOAD && opcode <= Opcodes.ALOAD) {
             if((Type.getArgumentTypes(method.getDescriptor()).length + (method.isMember() ? 1 : 0)) > var) {
-                if(var == 0 && method.isConstructor()) {
-                    stack.add(new VariableStackValue("Ljava/lang/Object;", "_jfdfRP"));
-                } else {
-                    stack.add(new VariableStackValue(variableDescriptors.get(var), "_jfdffa>%var(_jfdfFD)>" + var));
-                }
+                stack.add(new VariableStackValue(variableDescriptors.get(var), "_jfdffa>%var(_jfdfFD)>" + var));
             } else {
                 stack.add(new VariableStackValue(variableDescriptors.get(var), "_jfdffv>%var(_jfdfFD)>" + var));
             }
@@ -1334,7 +1334,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
 
                     if (method.isConstructor()) {
                         if (objectStackValue instanceof VariableStackValue
-                                && ((Variable) objectStackValue.getTransformedValue()).getName().equals("_jfdfRP")) {
+                                && ((Variable) objectStackValue.getTransformedValue()).getName().equals("_jfdffa>%var(_jfdfFD)>0")) {
                             int memberFieldsCount = (int) Arrays.stream(class_.getDeclaredFields())
                                     .filter(field -> !Modifier.isStatic(field.getModifiers()))
                                     .count();
@@ -1347,7 +1347,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                                 if (containClassName) objectData[0] = new Text().Set(class_.getName().replace('.', '/'));
 
                                 VariableControl.CreateList(
-                                        new Variable("_jfdfR%var(_jfdfRP)", Variable.Scope.NORMAL),
+                                        new Variable("_jfdfR%var(_jfdffa>%var(_jfdfFD)>0)", Variable.Scope.NORMAL),
                                         objectData
                                 );
                             } else {
@@ -1396,13 +1396,13 @@ public class CompilerMethodVisitor extends MethodVisitor {
                                 Functions.Call("_jfdf>" + owner + ">" + name + ">" + callDescriptor);
 
                                 VariableControl.SetListValue(
-                                        new Variable("_jfdfR%var(_jfdfRP)", Variable.Scope.NORMAL),
+                                        new Variable("_jfdfR%var(_jfdffa>%var(_jfdfFD)>0)", Variable.Scope.NORMAL),
                                         new Number().Set(1),
                                         new Text().Set(class_.getName().replace('.', '/'))
                                 );
 
                                 VariableControl.AppendValue(
-                                        new Variable("_jfdfR%var(_jfdfRP)", Variable.Scope.NORMAL),
+                                        new Variable("_jfdfR%var(_jfdffa>%var(_jfdfFD)>0)", Variable.Scope.NORMAL),
                                         objectDataAddition
                                 );
                             }
