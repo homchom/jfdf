@@ -101,7 +101,7 @@ public final class JFDFCompiler {
             while (checkClass != Object.class) {
                 Text checkClassInternalName = new Text().Set(Type.getInternalName(checkClass));
 
-                Arrays.stream(compiledClass.getDeclaredMethods())
+                Arrays.stream(checkClass.getDeclaredMethods())
                         .filter(method -> !Modifier.isStatic(method.getModifiers())
                                 && !methodMap.containsKey(method.getName() + ">" + Type.getMethodDescriptor(method)))
                         .forEach(method -> methodMap.put(method.getName() + ">" + Type.getMethodDescriptor(method), checkClassInternalName));
