@@ -1,9 +1,11 @@
 package net.jfdf.jfdf;
 
 import net.jfdf.jfdf.blocks.CodeBlock;
+import net.jfdf.jfdf.blocks.CodeHeader;
 
 import java.util.List;
+import java.util.Map;
 
 public interface IBlocksAddon {
-    public void onPreGenerateLine(List<CodeBlock> blocks);
+    public Map<CodeHeader, List<CodeBlock>> onPreGenerateLine(List<CodeBlock> blocks);
 }

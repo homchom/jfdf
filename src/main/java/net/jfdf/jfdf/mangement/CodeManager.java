@@ -75,17 +75,18 @@ public class CodeManager {
 	}
 	
 	public List<String> getCodeValuesAsList() {
+		Map<CodeHeader, List<CodeBlock>> addonCodeBlocks = new HashMap<>();
 		List<String> codeValues = new ArrayList<>();
 		
 		for (Entry<CodeHeader, List<CodeBlock>> codeBlocksData : codeBlocks.entrySet()) {
 			CodeHeader codeHeader = codeBlocksData.getKey();
 			List<CodeBlock> codeBlocks = new ArrayList<>(codeBlocksData.getValue());
-			AddonsManager.publishPreGenerateLine(codeBlocks);
+
+			addonCodeBlocks.putAll(AddonsManager.publishPreGenerateLine(codeBlocks));
 			
 			String codeNBT = "{\"blocks\":[";
 			
 			List<String> codeBlocksJSON = new ArrayList<>();
-			
 			codeBlocksJSON.add(codeHeader.asJSON());
 			
 			for (CodeBlock codeBlock : codeBlocks) {
@@ -112,6 +113,37 @@ public class CodeManager {
 	        } catch (Exception t) {
 	        	t.printStackTrace();
 	        	throw new RuntimeException("Error while compressing");
+			}
+		}
+
+		for (Entry<CodeHeader, List<CodeBlock>> codeBlocksData : addonCodeBlocks.entrySet()) {
+			CodeHeader codeHeader = codeBlocksData.getKey();
+			List<CodeBlock> codeBlocks = codeBlocksData.getValue();
+
+			String codeNBT = "{\"blocks\":[";
+			List<String> codeBlocksJSON = new ArrayList<>();
+
+			codeBlocksJSON.add(codeHeader.asJSON());
+
+			for (CodeBlock codeBlock : codeBlocks) {
+				codeBlocksJSON.add(codeBlock.asJSON());
+			}
+
+			codeNBT += String.join(",", codeBlocksJSON) + "]}";
+
+			try {
+				ByteArrayOutputStream bos = new ByteArrayOutputStream(codeNBT.length());
+				GZIPOutputStream gzip = new GZIPOutputStream(bos);
+
+				gzip.write(codeNBT.getBytes(StandardCharsets.UTF_8));
+				gzip.close();
+				bos.close();
+
+				String compressed = new String(Base64.getEncoder().encode(bos.toByteArray()), StandardCharsets.UTF_8);
+				codeValues.add(compressed);
+			} catch (Exception e) {
+				e.printStackTrace();
+				throw new RuntimeException("Error while compressing");
 			}
 		}
         

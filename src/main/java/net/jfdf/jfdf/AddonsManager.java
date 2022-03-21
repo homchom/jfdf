@@ -1,9 +1,12 @@
 package net.jfdf.jfdf;
 
 import net.jfdf.jfdf.blocks.CodeBlock;
+import net.jfdf.jfdf.blocks.CodeHeader;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public final class AddonsManager {
     private static final List<IBlocksAddon> addons = new ArrayList<>();
@@ -16,9 +19,17 @@ public final class AddonsManager {
         addons.remove(addon);
     }
 
-    public static void publishPreGenerateLine(List<CodeBlock> blocks) {
+    public static Map<CodeHeader, List<CodeBlock>> publishPreGenerateLine(List<CodeBlock> blocks) {
+        Map<CodeHeader, List<CodeBlock>> result = new HashMap<>();
+
         for (IBlocksAddon addon : addons) {
-            addon.onPreGenerateLine(blocks);
+            Map<CodeHeader, List<CodeBlock>> addonResult = addon.onPreGenerateLine(blocks);
+
+            if(addonResult != null) {
+                result.putAll(addonResult);
+            }
         }
+
+        return result;
     }
 }
