@@ -1006,7 +1006,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
 
                             VariableControl.InsertListValue(
                                     reference,
-                                    NumberMath.add((INumber) stack.remove(stack.size() - 2).getTransformedValue(), new Number().Set(2)),
+                                    NumberMath.add((INumber) stack.remove(stack.size() - 1).getTransformedValue(), new Number().Set(2)),
                                     stackValue.getTransformedValue()
                             );
 
