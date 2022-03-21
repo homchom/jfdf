@@ -2045,7 +2045,10 @@ public class CompilerMethodVisitor extends MethodVisitor {
         boolean breakIf = false;
 
         int jumpToIndex = ((JumpInstructionData) instructionDataList.get(instructionIndex)).jumpToInstructionIndex;
-        if (opcode >= Opcodes.IFEQ && opcode <= Opcodes.IF_ACMPNE) {
+        boolean isIf = (opcode >= Opcodes.IFEQ && opcode <= Opcodes.IF_ACMPNE)
+                || opcode == Opcodes.IFNULL || opcode == Opcodes.IFNONNULL;
+
+        if (isIf) {
             if(endBracketIndices.contains(-jumpToIndex)) {
                 if(endBracketIndices.get(endBracketIndices.size() - 1) == -jumpToIndex) {
                     breakIf = true;
@@ -2117,12 +2120,14 @@ public class CompilerMethodVisitor extends MethodVisitor {
                     Opcodes.IFLT,
                     Opcodes.IFGE,
                     Opcodes.IFGT,
-                    Opcodes.IFLE -> {
+                    Opcodes.IFLE,
+                    Opcodes.IFNULL,
+                    Opcodes.IFNONNULL -> {
                 IStackValue stackValue = stack.remove(stack.size() - 1);
 
                 String ifType = switch (opcode) {
-                    case Opcodes.IFEQ -> "!=";
-                    case Opcodes.IFNE -> "=";
+                    case Opcodes.IFEQ, Opcodes.IFNULL -> "!=";
+                    case Opcodes.IFNE, Opcodes.IFNONNULL -> "=";
                     case Opcodes.IFLT -> ">=";
                     case Opcodes.IFGE -> "<";
                     case Opcodes.IFGT -> "<=";
@@ -2194,7 +2199,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
         }
 
         // Checks if instruction is if instruction
-        if (opcode >= Opcodes.IFEQ && opcode <= Opcodes.IF_ACMPNE) {
+        if (isIf) {
             if(breakIf) {
                 Control.StopRepeat();
                 If.End();
