@@ -8,6 +8,7 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.zip.GZIPOutputStream;
 
+import net.jfdf.jfdf.AddonsManager;
 import net.jfdf.jfdf.JFDFAddon;
 import net.jfdf.jfdf.blocks.CodeBlock;
 import net.jfdf.jfdf.blocks.CodeHeader;
@@ -78,7 +79,8 @@ public class CodeManager {
 		
 		for (Entry<CodeHeader, List<CodeBlock>> codeBlocksData : codeBlocks.entrySet()) {
 			CodeHeader codeHeader = codeBlocksData.getKey();
-			List<CodeBlock> codeBlocks = codeBlocksData.getValue();
+			List<CodeBlock> codeBlocks = new ArrayList<>(codeBlocksData.getValue());
+			AddonsManager.publishPreGenerateLine(codeBlocks);
 			
 			String codeNBT = "{\"blocks\":[";
 			
