@@ -2127,9 +2127,16 @@ public class CompilerMethodVisitor extends MethodVisitor {
                     Opcodes.IFNONNULL -> {
                 IStackValue stackValue = stack.remove(stack.size() - 1);
 
+                boolean compareEqInvert = invertIf;
                 String ifType = switch (opcode) {
-                    case Opcodes.IFEQ, Opcodes.IFNULL -> "!=";
-                    case Opcodes.IFNE, Opcodes.IFNONNULL -> "=";
+                    case Opcodes.IFEQ, Opcodes.IFNULL -> {
+                        compareEqInvert = !invertIf;
+                        yield "!=";
+                    }
+                    case Opcodes.IFNE, Opcodes.IFNONNULL -> {
+                        compareEqInvert = !invertIf;
+                        yield "=";
+                    }
                     case Opcodes.IFLT -> ">=";
                     case Opcodes.IFGE -> "<";
                     case Opcodes.IFGT -> "<=";
@@ -2147,7 +2154,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                     };
 
                     if(compareType == CompareStackValue.CompareType.NORMAL) {
-                        invertIf = !invertIf;
+                        invertIf = compareEqInvert;
                     } else if(compareType == CompareStackValue.CompareType.LIST_CONTAINS) {
                         ifType = "ListContains";
                         invertIf = (opcode == Opcodes.IFNE) != invertIf;
