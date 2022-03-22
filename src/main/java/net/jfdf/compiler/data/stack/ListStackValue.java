@@ -12,8 +12,6 @@ public class ListStackValue extends ReferencedStackValue {
     public ListStackValue(String type, String methodName, int blockOperatorIndex) {
         super(methodName, blockOperatorIndex);
         this.type = type;
-
-        VariableControl.CreateList(getReference(), new Text().Set("\0r"));
     }
 
     public String getType() {

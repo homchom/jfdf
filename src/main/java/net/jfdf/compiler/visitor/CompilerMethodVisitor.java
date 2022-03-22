@@ -1125,7 +1125,8 @@ public class CompilerMethodVisitor extends MethodVisitor {
                             }
 
                             VariableControl.CreateList(
-                                    reference
+                                    reference,
+                                    new Text().Set("\0r")
                             );
                         }
                         case "indexOf(Ljava/lang/Object;)I" -> {
@@ -1318,7 +1319,8 @@ public class CompilerMethodVisitor extends MethodVisitor {
                         switch (descriptor) {
                             case "()V" ->
                                     VariableControl.CreateList(
-                                            ((ListStackValue) objectStackValue).getReference()
+                                            ((ListStackValue) objectStackValue).getReference(),
+                                            new Text().Set("\0r")
                                     );
                             case "(Ljava/util/Collection;)V" ->
                                     VariableControl.Set(
