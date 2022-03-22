@@ -1114,7 +1114,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                         case "toArray()[Ljava/lang/Object;" ->
                             stack.add(
                                     new ArrayStackValue(
-                                            (Variable) pointerStackValue.getTransformedValue(),
+                                            reference,
                                             method.getName(),
                                             blockOperationIndex++
                                     )
