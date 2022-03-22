@@ -1088,7 +1088,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                                     reference
                             );
 
-                            stack.add(new VariableStackValue("I", variableName));
+                            stack.add(new MathStackValue(new Variable(variableName, Variable.Scope.LOCAL), new Number().Set(1), MathStackValue.MathOperation.SUBTRACT));
                         }
                         case "addAll(Ljava/lang/Collection;)Z" -> {
                             if(pointerStackValue instanceof ArrayStackValue) {
