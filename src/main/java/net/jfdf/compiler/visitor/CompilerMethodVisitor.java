@@ -1143,7 +1143,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                             stack.add(new MathStackValue(new Variable(variableName, Variable.Scope.LOCAL), new Number().Set(1), MathStackValue.MathOperation.SUBTRACT));
                         }
                         case "get(I)Ljava/lang/Object;" -> {
-                            INumber index = NumberMath.add((INumber) stack.remove(stack.size() - 1).getTransformedValue(), new Number().Set(1));
+                            INumber index = NumberMath.add((INumber) stack.remove(stack.size() - 1).getTransformedValue(), new Number().Set(2));
                             String variableName = getTempVariableName();
 
                             Variable value = new Variable(variableName, Variable.Scope.LOCAL);
