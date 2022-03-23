@@ -1,5 +1,6 @@
 package net.jfdf.compiler.visitor;
 
+import net.jfdf.compiler.CompilerAddons;
 import net.jfdf.compiler.JFDFCompiler;
 import net.jfdf.compiler.annotation.CompileWithExecute;
 import net.jfdf.compiler.annotation.MethodFallback;
@@ -716,6 +717,8 @@ public class CompilerMethodVisitor extends MethodVisitor {
 
         switch (opcode) {
             case Opcodes.INVOKEVIRTUAL, Opcodes.INVOKEINTERFACE -> {
+                if(CompilerAddons.publishInvokeMemberEvent(owner, name, descriptor, stack)) return;
+
                 int argsCount = Type.getArgumentTypes(descriptor).length;
                 IStackValue pointerStackValue = stack.get(stack.size() - (argsCount + 1));
 
@@ -1322,6 +1325,8 @@ public class CompilerMethodVisitor extends MethodVisitor {
 
                 if(name.equals("<init>")) {
                     if(objectStackValue instanceof ListStackValue) {
+                        if(CompilerAddons.publishInvokeConstructorEvent(owner, descriptor, stack)) return;
+
                         switch (descriptor) {
                             case "()V" ->
                                     VariableControl.CreateList(
@@ -1426,13 +1431,14 @@ public class CompilerMethodVisitor extends MethodVisitor {
                         }
                     }
 
+                    if(CompilerAddons.publishInvokeConstructorEvent(owner, descriptor, stack)) return;
+
                     try {
                         JFDFCompiler.addUsedClass(Class.forName(owner.replace('/', '.')));
                     } catch (ClassNotFoundException e) {
                         throw new RuntimeException("Something went wrong.", e);
                     }
 
-                    if(CompilerAddons.publishInvokeConstructorEvent(owner, descriptor, stack)) return;
                     stack.remove(stack.size() - argsCount - 1);
 
                     if(!JFDFCompiler.useNextPatchFeatures) VariableControl.Set(new Variable("_jfdfPFD", Variable.Scope.LOCAL), new Variable("_jfdfFD", Variable.Scope.LOCAL));
@@ -1527,6 +1533,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                 return;
             }
             case Opcodes.INVOKESTATIC -> {
+                if(CompilerAddons.publishInvokeStaticEvent(owner, name, descriptor, stack)) return;
                 int argsCount = Type.getArgumentTypes(descriptor).length;
 
                 if(owner.equals("net/jfdf/compiler/util/CodeValueArrayBuilder")
@@ -1733,6 +1740,8 @@ public class CompilerMethodVisitor extends MethodVisitor {
         instructionIndex++;
 
         if(opcode == Opcodes.NEW) {
+            if(CompilerAddons.publishInitClassEvent(type, stack)) return;
+
             if(type.equals("java/util/List") || type.equals("java/util/ArrayList")) {
                 stack.add(new ListStackValue(type, method.getName(), blockOperationIndex++));
             } else if(type.startsWith("net/jfdf/jfdf/values/")) {
