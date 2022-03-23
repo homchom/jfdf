@@ -1237,6 +1237,12 @@ public class CompilerMethodVisitor extends MethodVisitor {
 
                     return;
                 } else {
+                    try {
+                        JFDFCompiler.addUsedClass(Class.forName(owner.replace('/', '.')));
+                    } catch (ClassNotFoundException e) {
+                        throw new RuntimeException("Something went wrong.", e);
+                    }
+
                     CodeValue[] invokeVirtualArgs = new CodeValue[3 + argsCount];
 
                     invokeVirtualArgs[0] = pointerStackValue.getTransformedValue();
@@ -1356,6 +1362,12 @@ public class CompilerMethodVisitor extends MethodVisitor {
                                 CodeValue[] objectDataAddition = new CodeValue[memberFieldsCount];
                                 Arrays.fill(objectDataAddition, new Number().Set(0));
 
+                                try {
+                                    JFDFCompiler.addUsedClass(Class.forName(owner.replace('/', '.')));
+                                } catch (ClassNotFoundException e) {
+                                    throw new RuntimeException("Something went wrong.", e);
+                                }
+
                                 if(!JFDFCompiler.useNextPatchFeatures) VariableControl.Set(new Variable("_jfdfPFD", Variable.Scope.LOCAL), new Variable("_jfdfFD", Variable.Scope.LOCAL));
                                 VariableControl.Increment(new Variable("_jfdfFD", Variable.Scope.LOCAL));
 
@@ -1414,6 +1426,13 @@ public class CompilerMethodVisitor extends MethodVisitor {
                         }
                     }
 
+                    try {
+                        JFDFCompiler.addUsedClass(Class.forName(owner.replace('/', '.')));
+                    } catch (ClassNotFoundException e) {
+                        throw new RuntimeException("Something went wrong.", e);
+                    }
+
+                    if(CompilerAddons.publishInvokeConstructorEvent(owner, descriptor, stack)) return;
                     stack.remove(stack.size() - argsCount - 1);
 
                     if(!JFDFCompiler.useNextPatchFeatures) VariableControl.Set(new Variable("_jfdfPFD", Variable.Scope.LOCAL), new Variable("_jfdfFD", Variable.Scope.LOCAL));
@@ -1454,6 +1473,12 @@ public class CompilerMethodVisitor extends MethodVisitor {
 
                     Functions.Call("_jfdf>" + owner + "><init>>" + callDescriptor);
                     return;
+                }
+
+                try {
+                    JFDFCompiler.addUsedClass(Class.forName(owner.replace('/', '.')));
+                } catch (ClassNotFoundException e) {
+                    throw new RuntimeException("Something went wrong.", e);
                 }
 
                 if(!JFDFCompiler.useNextPatchFeatures) VariableControl.Set(new Variable("_jfdfPFD", Variable.Scope.LOCAL), new Variable("_jfdfFD", Variable.Scope.LOCAL));
@@ -1635,6 +1660,12 @@ public class CompilerMethodVisitor extends MethodVisitor {
                         return;
                     }
                 } else {
+                    try {
+                        JFDFCompiler.addUsedClass(Class.forName(owner.replace('/', '.')));
+                    } catch (ClassNotFoundException e) {
+                        throw new RuntimeException("Something went wrong.", e);
+                    }
+
                     if(!JFDFCompiler.useNextPatchFeatures) VariableControl.Set(new Variable("_jfdfPFD", Variable.Scope.LOCAL), new Variable("_jfdfFD", Variable.Scope.LOCAL));
                     VariableControl.Increment(new Variable("_jfdfFD", Variable.Scope.LOCAL));
 
@@ -1755,6 +1786,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                 } else {
                     try {
                         Class<?> fieldClass = Class.forName(owner.replace('/', '.'));
+                        JFDFCompiler.addUsedClass(fieldClass);
 
                         Field field = null;
                         while(field == null && fieldClass != Object.class) {
@@ -1795,6 +1827,8 @@ public class CompilerMethodVisitor extends MethodVisitor {
 
                     Class<?> fieldClass = Class.forName(owner.replace('/', '.'));
                     int fieldIndex = FieldsManager.getFieldIndex(fieldClass, name);
+
+                    JFDFCompiler.addUsedClass(fieldClass);
 
                     if(descriptor.equals("Ljava/lang/String;")) {
                         stack.add(

@@ -19,6 +19,7 @@ import java.util.List;
 public final class JFDFCompiler {
     private static final List<Class<?>> analyzedClasses = new ArrayList<>();
     private static final List<Class<?>> compiledClasses = new ArrayList<>();
+    private static final Set<Class<?>> usedClasses = new HashSet<>();
 
     public static boolean useNextPatchFeatures = false;
 
@@ -135,6 +136,18 @@ public final class JFDFCompiler {
                         new Variable("_jco0", Variable.Scope.LOCAL),
                         new Variable("_jco1", Variable.Scope.LOCAL)
                 );
+            }
+        }
+    }
+
+    public static void addUsedClass(Class<?> class_) {
+        usedClasses.add(class_);
+    }
+
+    public static void checkUsedClasses() {
+        for (Class<?> usedClass : usedClasses) {
+            if(!compiledClasses.contains(usedClass)) {
+                throw new IllegalStateException("Trying to use not compiled class \"" + usedClass.getName() + "\".");
             }
         }
     }
