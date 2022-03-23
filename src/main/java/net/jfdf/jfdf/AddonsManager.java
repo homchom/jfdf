@@ -19,11 +19,11 @@ public final class AddonsManager {
         addons.remove(addon);
     }
 
-    public static Map<CodeHeader, List<CodeBlock>> publishPreGenerateLine(List<CodeBlock> blocks) {
+    public static Map<CodeHeader, List<CodeBlock>> publishPreGenerateLine(CodeHeader codeHeader, List<CodeBlock> blocks) {
         Map<CodeHeader, List<CodeBlock>> result = new HashMap<>();
 
         for (IBlocksAddon addon : addons) {
-            Map<CodeHeader, List<CodeBlock>> addonResult = addon.onPreGenerateLine(blocks);
+            Map<CodeHeader, List<CodeBlock>> addonResult = addon.onPreGenerateLine(codeHeader, blocks);
 
             if(addonResult != null) {
                 result.putAll(addonResult);

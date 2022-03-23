@@ -82,7 +82,7 @@ public class CodeManager {
 			CodeHeader codeHeader = codeBlocksData.getKey();
 			List<CodeBlock> codeBlocks = new ArrayList<>(codeBlocksData.getValue());
 
-			addonCodeBlocks.putAll(AddonsManager.publishPreGenerateLine(codeBlocks));
+			addonCodeBlocks.putAll(AddonsManager.publishPreGenerateLine(codeHeader, codeBlocks));
 			
 			String codeNBT = "{\"blocks\":[";
 			
