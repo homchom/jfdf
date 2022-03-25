@@ -81,6 +81,10 @@ public class ControlBlock implements CodeBlock {
 		return json;
 	}
 
+	public String getAction() {
+		return action;
+	}
+
 	@Deprecated
 	public enum Action {
 		WAIT(0, "Wait"),
