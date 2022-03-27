@@ -1,4 +1,4 @@
-package net.jfdf.addon.splitter.random;
+package net.jfdf.addon.random;
 
 import net.jfdf.compiler.ICompilerAddon;
 import net.jfdf.compiler.data.stack.IStackValue;
