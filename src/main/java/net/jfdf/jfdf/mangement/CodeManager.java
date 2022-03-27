@@ -149,6 +149,82 @@ public class CodeManager {
         
         return codeValues;
 	}
+
+	public Map<CodeHeader, String> getCodeValuesAsMap() {
+		Map<CodeHeader, List<CodeBlock>> addonCodeBlocks = new LinkedHashMap<>();
+		Map<CodeHeader, String> codeValues = new LinkedHashMap<>();
+
+		for (Entry<CodeHeader, List<CodeBlock>> codeBlocksData : codeBlocks.entrySet()) {
+			CodeHeader codeHeader = codeBlocksData.getKey();
+			List<CodeBlock> codeBlocks = new ArrayList<>(codeBlocksData.getValue());
+
+			addonCodeBlocks.putAll(AddonsManager.publishPreGenerateLine(codeHeader, codeBlocks));
+
+			String codeNBT = "{\"blocks\":[";
+
+			List<String> codeBlocksJSON = new ArrayList<>();
+			codeBlocksJSON.add(codeHeader.asJSON());
+
+			for (CodeBlock codeBlock : codeBlocks) {
+				codeBlocksJSON.add(codeBlock.asJSON());
+			}
+
+			codeNBT += String.join(",", codeBlocksJSON) + "]}";
+
+			try {
+				ByteArrayOutputStream bos = new ByteArrayOutputStream(codeNBT.length());
+				GZIPOutputStream gzip = new GZIPOutputStream(bos);
+
+				gzip.write(codeNBT.getBytes(StandardCharsets.UTF_8));
+				gzip.close();
+				bos.close();
+
+				String compressed = new String(Base64.getEncoder().encode(bos.toByteArray()), StandardCharsets.UTF_8);
+				codeValues.put(codeHeader, compressed);
+
+				try {
+					JFDFAddon.class.getMethod("onGetCodeHeaderValue", String.class).invoke(null, compressed);
+				} catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException
+						| InvocationTargetException e) {}
+			} catch (Exception t) {
+				t.printStackTrace();
+				throw new RuntimeException("Error while compressing");
+			}
+		}
+
+		for (Entry<CodeHeader, List<CodeBlock>> codeBlocksData : addonCodeBlocks.entrySet()) {
+			CodeHeader codeHeader = codeBlocksData.getKey();
+			List<CodeBlock> codeBlocks = codeBlocksData.getValue();
+
+			String codeNBT = "{\"blocks\":[";
+			List<String> codeBlocksJSON = new ArrayList<>();
+
+			codeBlocksJSON.add(codeHeader.asJSON());
+
+			for (CodeBlock codeBlock : codeBlocks) {
+				codeBlocksJSON.add(codeBlock.asJSON());
+			}
+
+			codeNBT += String.join(",", codeBlocksJSON) + "]}";
+
+			try {
+				ByteArrayOutputStream bos = new ByteArrayOutputStream(codeNBT.length());
+				GZIPOutputStream gzip = new GZIPOutputStream(bos);
+
+				gzip.write(codeNBT.getBytes(StandardCharsets.UTF_8));
+				gzip.close();
+				bos.close();
+
+				String compressed = new String(Base64.getEncoder().encode(bos.toByteArray()), StandardCharsets.UTF_8);
+				codeValues.put(codeHeader, compressed);
+			} catch (Exception e) {
+				e.printStackTrace();
+				throw new RuntimeException("Error while compressing");
+			}
+		}
+
+		return codeValues;
+	}
 	
 	public String[] getCodeValues() {
 		List<String> codeValuesList = getCodeValuesAsList();

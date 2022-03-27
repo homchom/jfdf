@@ -3,10 +3,7 @@ package net.jfdf.jfdf;
 import net.jfdf.jfdf.blocks.CodeBlock;
 import net.jfdf.jfdf.blocks.CodeHeader;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public final class AddonsManager {
     private static final List<IBlocksAddon> addons = new ArrayList<>();
@@ -20,7 +17,7 @@ public final class AddonsManager {
     }
 
     public static Map<CodeHeader, List<CodeBlock>> publishPreGenerateLine(CodeHeader codeHeader, List<CodeBlock> blocks) {
-        Map<CodeHeader, List<CodeBlock>> result = new HashMap<>();
+        Map<CodeHeader, List<CodeBlock>> result = new LinkedHashMap<>();
 
         for (IBlocksAddon addon : addons) {
             Map<CodeHeader, List<CodeBlock>> addonResult = addon.onPreGenerateLine(codeHeader, blocks);
