@@ -405,6 +405,13 @@ public class CompilerMethodVisitor extends MethodVisitor {
                 stack.add(stack.get(stack.size() - 2));
                 stack.add(stack.get(stack.size() - 2));
             }
+            case Opcodes.SWAP -> {
+                stack.add(stack.get(stack.size() - 1));
+                stack.remove(stack.size() - 2);
+
+                stack.add(stack.get(stack.size() - 2));
+                stack.remove(stack.get(stack.size() - 3));
+            }
             case Opcodes.IADD,
                     Opcodes.LADD,
                     Opcodes.FADD,
