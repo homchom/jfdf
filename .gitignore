@@ -9,7 +9,7 @@ out
 # Testing directories
 JFDFTransformer
 transform_out
-src/test
+src/test/java/net/jfdf/test/compiler
 lib
 
 # Build files
