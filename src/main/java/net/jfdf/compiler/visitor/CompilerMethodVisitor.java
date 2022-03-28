@@ -1187,7 +1187,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                                 };
                             }
 
-                            ReferenceUtils.decrementIfReference(getValueDescriptor, value);
+                            ReferenceUtils.incrementIfReference(getValueDescriptor, value);
                             stack.add(new VariableStackValue("Ljava/lang/Object;", variableName));
                         }
                         case "set(ILjava/lang/Object;)Ljava/lang/Object;" -> {
