@@ -947,7 +947,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                     } catch (InvocationTargetException | InstantiationException | IllegalArgumentException e) {
                         throw new RuntimeException("Invalid value types during invoking \"" + name + descriptor + "\" of class \"" + owner + "\".\n"
                                 + "Passed arguments: " + Arrays.deepToString(methodArgs) + "\n"
-                                + "Invoked by : " + Type.getInternalName(class_) + ">" + method.getName() + method.getDescriptor() + ":" + lineNumber, e);
+                                + "Invoked by : " + Type.getInternalName(this.class_) + ">" + method.getName() + method.getDescriptor() + ":" + lineNumber, e);
                     }
 
                     stack.remove(stack.size() - 1);
