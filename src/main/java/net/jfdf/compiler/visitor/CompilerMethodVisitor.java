@@ -8,6 +8,7 @@ import net.jfdf.compiler.data.instruction.InstructionData;
 import net.jfdf.compiler.data.instruction.JumpInstructionData;
 import net.jfdf.compiler.data.instruction.TypeInstructionData;
 import net.jfdf.compiler.data.stack.*;
+import net.jfdf.compiler.data.stack.Stack;
 import net.jfdf.compiler.library.References;
 import net.jfdf.compiler.util.FieldsManager;
 import net.jfdf.compiler.util.MethodWrapper;
@@ -34,7 +35,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
     private final MethodWrapper method;
 
     private int blockOperationIndex = 0;
-    private final List<IStackValue> stack = new ArrayList<>();
+    private final Stack stack = new Stack();
 
     private int lineNumber = -1;
     private int instructionIndex = -1;
@@ -230,6 +231,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
     public void visitLabel(Label label) {
         if(compileWithExecute) return;
         labelInstructionIndex = ++instructionIndex;
+        stack.onVisitInsn(-1);
 
         endBracketIndices.stream()
                 .sorted(Collections.reverseOrder())
@@ -249,6 +251,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
     public void visitLineNumber(int line, Label start) {
         if(compileWithExecute) return;
         instructionIndex++;
+        stack.onVisitInsn(-1);
 
         this.lineNumber = line;
     }
@@ -257,12 +260,14 @@ public class CompilerMethodVisitor extends MethodVisitor {
     public void visitFrame(int type, int numLocal, Object[] local, int numStack, Object[] stack) {
         if(compileWithExecute) return;
         instructionIndex++;
+        this.stack.onVisitInsn(-1);
     }
 
     @Override
     public void visitInsn(int opcode) {
         if(compileWithExecute) return;
         instructionIndex++;
+        stack.onVisitInsn(opcode);
 
         switch (opcode) {
             case Opcodes.ACONST_NULL ->
@@ -659,6 +664,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
     public void visitVarInsn(int opcode, int var) {
         if(compileWithExecute) return;
         instructionIndex++;
+        stack.onVisitInsn(opcode);
 
         String variableName;
         if(opcode >= Opcodes.ISTORE && opcode <= Opcodes.ASTORE) {
@@ -714,6 +720,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
     public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
         if(compileWithExecute) return;
         instructionIndex++;
+        stack.onVisitInsn(opcode);
 
         switch (opcode) {
             case Opcodes.INVOKEVIRTUAL, Opcodes.INVOKEINTERFACE -> {
@@ -1738,6 +1745,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
     public void visitTypeInsn(int opcode, String type) {
         if(compileWithExecute) return;
         instructionIndex++;
+        stack.onVisitInsn(opcode);
 
         if(opcode == Opcodes.NEW) {
             if(CompilerAddons.publishInitClassEvent(type, stack)) return;
@@ -1769,6 +1777,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
     public void visitFieldInsn(int opcode, String owner, String name, String descriptor) {
         if(compileWithExecute) return;
         instructionIndex++;
+        stack.onVisitInsn(opcode);
 
         switch (opcode) {
             case Opcodes.GETSTATIC -> {
@@ -1938,6 +1947,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
     public void visitLdcInsn(Object value) {
         if(compileWithExecute) return;
         instructionIndex++;
+        stack.onVisitInsn(Opcodes.LDC);
 
         if(value.getClass() == String.class) {
             stack.add(new TextStackValue((String) value));
@@ -1966,6 +1976,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
     public void visitTryCatchBlock(Label start, Label end, Label handler, String type) {
         if(compileWithExecute) return;
         instructionIndex++;
+        stack.onVisitInsn(10000);
 
         throw new IllegalStateException("Try-catch statements are not supported !");
     }
@@ -1974,6 +1985,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
     public void visitLookupSwitchInsn(Label dflt, int[] keys, Label[] labels) {
         if(compileWithExecute) return;
         instructionIndex++;
+        stack.onVisitInsn(Opcodes.LOOKUPSWITCH);
 
         throw new IllegalStateException("Lookup switches are not supported !");
     }
@@ -1982,6 +1994,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
     public void visitTableSwitchInsn(int min, int max, Label dflt, Label... labels) {
         if(compileWithExecute) return;
         instructionIndex++;
+        stack.onVisitInsn(Opcodes.TABLESWITCH);
 
         throw new IllegalStateException("Table switches are not supported !");
     }
@@ -1990,6 +2003,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
     public void visitInvokeDynamicInsn(String name, String descriptor, Handle bootstrapMethodHandle, Object... bootstrapMethodArguments) {
         if(compileWithExecute) return;
         instructionIndex++;
+        stack.onVisitInsn(Opcodes.INVOKEDYNAMIC);
 
         throw new IllegalStateException("Invoke dynamic is not supported !");
     }
@@ -1998,6 +2012,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
     public void visitIincInsn(int var, int increment) {
         if(compileWithExecute) return;
         instructionIndex++;
+        stack.onVisitInsn(Opcodes.IINC);
 
         String variableName;
         if((Type.getArgumentTypes(method.getDescriptor()).length + (method.isMember() ? 1 : 0)) > var) {
@@ -2044,6 +2059,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
     public void visitIntInsn(int opcode, int operand) {
         if(compileWithExecute) return;
         instructionIndex++;
+        stack.onVisitInsn(opcode);
 
         switch (opcode) {
             case Opcodes.BIPUSH, Opcodes.SIPUSH -> stack.add(new NumberStackValue(operand));
@@ -2074,13 +2090,15 @@ public class CompilerMethodVisitor extends MethodVisitor {
     public void visitMultiANewArrayInsn(String descriptor, int numDimensions) {
         if(compileWithExecute) return;
         instructionIndex++;
+        stack.onVisitInsn(Opcodes.MULTIANEWARRAY);
 
         throw new IllegalStateException("Multi-dimensional arrays are not supported !");
     }
 
     @Override
     public void visitJumpInsn(int opcode, Label label) {
-        if (compileWithExecute) return;
+        if(compileWithExecute) return;
+        stack.onVisitInsn(opcode);
         instructionIndex++;
 
         boolean whileRepeat = false;
