@@ -596,6 +596,7 @@ public class CompilerMethodVisitor extends MethodVisitor {
                 } else {
                     // Sets return variable to a value
                     VariableControl.Set(new Variable("_jfdfrv", Variable.Scope.LOCAL), stackValue.getTransformedValue());
+                    ReferenceUtils.incrementIfReference(stackValue.getDescriptor(), new Variable("_jfdfrv", Variable.Scope.LOCAL));
                 }
 
                 int firstLocalVar = (method.isMember() ? 1 : 0)
