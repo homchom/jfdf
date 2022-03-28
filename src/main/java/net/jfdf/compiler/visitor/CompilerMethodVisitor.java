@@ -587,8 +587,6 @@ public class CompilerMethodVisitor extends MethodVisitor {
                     Opcodes.ARETURN -> {
                 IStackValue stackValue = stack.remove(stack.size() - 1);
 
-                VariableControl.Increment(new Variable("_jfdfRF", Variable.Scope.LOCAL), new Number().Set(1));
-
                 // Checks if value is a new reference object
                 if(stackValue instanceof ReferencedStackValue) {
                     // Changes array's variable to return variable
