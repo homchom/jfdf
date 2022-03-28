@@ -592,10 +592,10 @@ public class CompilerMethodVisitor extends MethodVisitor {
                 // Checks if value is a new reference object
                 if(stackValue instanceof ReferencedStackValue) {
                     // Changes array's variable to return variable
-                    ((ReferencedStackValue) stackValue).setAllocationVariable("_functionr%var(_jfdfRF)", Variable.Scope.LOCAL);
+                    ((ReferencedStackValue) stackValue).setAllocationVariable("_jfdfrv", Variable.Scope.LOCAL);
                 } else {
                     // Sets return variable to a value
-                    VariableControl.Set(new Variable("_functionr%var(_jfdfRF)", Variable.Scope.LOCAL), stackValue.getTransformedValue());
+                    VariableControl.Set(new Variable("_jfdfrv", Variable.Scope.LOCAL), stackValue.getTransformedValue());
                 }
 
                 int firstLocalVar = (method.isMember() ? 1 : 0)
@@ -1298,7 +1298,10 @@ public class CompilerMethodVisitor extends MethodVisitor {
 
                     String returnDescriptor = Type.getReturnType(descriptor).getDescriptor();
                     if(!returnDescriptor.equals("V")) {
-                        stack.add(new VariableStackValue(returnDescriptor, "_functionr%var(_jfdfRF)"));
+                        String returnVariableName = getTempVariableName();
+
+                        VariableControl.Set(new Variable(returnVariableName, Variable.Scope.LOCAL), new Variable("_jfdfrv", Variable.Scope.LOCAL));
+                        stack.add(new VariableStackValue(returnDescriptor, returnVariableName));
                     }
                 }
 
@@ -1534,7 +1537,10 @@ public class CompilerMethodVisitor extends MethodVisitor {
 
                 String returnDescriptor = Type.getReturnType(descriptor).getDescriptor();
                 if(!returnDescriptor.equals("V")) {
-                    stack.add(new VariableStackValue(returnDescriptor, "_functionr%var(_jfdfRF)"));
+                    String returnVariableName = getTempVariableName();
+
+                    VariableControl.Set(new Variable(returnVariableName, Variable.Scope.LOCAL), new Variable("_jfdfrv", Variable.Scope.LOCAL));
+                    stack.add(new VariableStackValue(returnDescriptor, returnVariableName));
                 }
 
                 return;
@@ -1727,7 +1733,10 @@ public class CompilerMethodVisitor extends MethodVisitor {
 
                     String returnDescriptor = Type.getReturnType(descriptor).getDescriptor();
                     if (!returnDescriptor.equals("V")) {
-                        stack.add(new VariableStackValue(returnDescriptor, "_functionr%var(_jfdfRF)"));
+                        String returnVariableName = getTempVariableName();
+
+                        VariableControl.Set(new Variable(returnVariableName, Variable.Scope.LOCAL), new Variable("_jfdfrv", Variable.Scope.LOCAL));
+                        stack.add(new VariableStackValue(returnDescriptor, returnVariableName));
                     }
                 }
 

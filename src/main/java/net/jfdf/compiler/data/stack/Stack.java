@@ -2,7 +2,6 @@ package net.jfdf.compiler.data.stack;
 
 import net.jfdf.compiler.util.ReferenceUtils;
 import net.jfdf.jfdf.values.Variable;
-import org.objectweb.asm.Opcodes;
 
 import java.util.*;
 
@@ -15,7 +14,7 @@ public class Stack extends ArrayList<IStackValue> {
                 || stackValue instanceof ReferencedStackValue) {
             String variableName = ((Variable) stackValue.getTransformedValue()).getName();
 
-            if(variableName.startsWith("_jco") || variableName.startsWith("_functionr")) {
+            if(variableName.startsWith("_jco")) {
                 boolean tempValueDataFound = false;
 
                 for(TempValueData tempValueData : tempValueUses) {
@@ -44,7 +43,7 @@ public class Stack extends ArrayList<IStackValue> {
                 || removedValue instanceof ReferencedStackValue) {
             String variableName = ((Variable) removedValue.getTransformedValue()).getName();
 
-            if(variableName.startsWith("_jco") || variableName.startsWith("_functionr")) {
+            if(variableName.startsWith("_jco")) {
                 for(TempValueData tempValueData : tempValueUses) {
                     if(tempValueData.variable.getName().equals(variableName)) {
                         tempValueData.uses -= 1;
@@ -66,11 +65,8 @@ public class Stack extends ArrayList<IStackValue> {
             String variableName = tempValueData.variable.getName();
 
             if(!variableName.startsWith("_jco")) {
-                if(!variableName.startsWith("_functionr")
-                        && ((instructionOpcode >= Opcodes.IRETURN && instructionOpcode <= Opcodes.RETURN) || instructionOpcode < 0)) {
-                    iterator.remove();
-                    return;
-                }
+                iterator.remove();
+                return;
             }
 
             if(tempValueData.uses == 0) {
